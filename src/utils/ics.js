@@ -1,157 +1,98 @@
-// utils/ics.js
-// STRICT ICS IMPORTER — drops anything ambiguous
+import { toDate } from "./time";
 
-// =======================
-// Helpers
-// =======================
+// --- HELPERS ---
 
-const COURSE_CODE_REGEX = /\b([A-Z]{2,4}\sF\d{3})\b/;
-const SECTION_REGEX = /\b([LTP]\d+)\b/i;
-const TIME_REGEX = /(\d{2}):(\d{2})/;
-
-const DAY_MAP = {
-  MO: "MO",
-  TU: "TU",
-  WE: "WE",
-  TH: "TH",
-  FR: "FR",
+// ICS files wrap long lines. We must "unfold" them first.
+const unfoldLines = (text) => {
+  return text.replace(/\r\n[ \t]/g, "");
 };
 
-function toLocalDate(dt) {
-  // dt like 20241230T033000Z or 20241230T033000
-  const hasZ = dt.endsWith("Z");
+// Parse ICS date format: 20231006T143000Z or 20231006T090000
+const parseICSDate = (dateStr) => {
+  if (!dateStr) return null;
+  
+  // Remove 'Z' if present (treat as UTC if Z exists, else local)
+  const isUTC = dateStr.endsWith("Z");
+  const cleanStr = dateStr.replace("Z", "");
+  
+  const y = parseInt(cleanStr.substring(0, 4));
+  const m = parseInt(cleanStr.substring(4, 6)) - 1; // Months are 0-indexed
+  const d = parseInt(cleanStr.substring(6, 8));
+  const h = parseInt(cleanStr.substring(9, 11));
+  const min = parseInt(cleanStr.substring(11, 13));
+  const s = parseInt(cleanStr.substring(13, 15));
 
-  const year = Number(dt.slice(0, 4));
-  const month = Number(dt.slice(4, 6)) - 1;
-  const day = Number(dt.slice(6, 8));
-  const hour = Number(dt.slice(9, 11));
-  const min = Number(dt.slice(11, 13));
-
-  if (hasZ) {
-    return new Date(Date.UTC(year, month, day, hour, min));
+  if (isUTC) {
+    return new Date(Date.UTC(y, m, d, h, min, s));
   }
-  return new Date(year, month, day, hour, min);
-}
+  return new Date(y, m, d, h, min, s);
+};
 
-function parseTime(dt) {
-  const d = toLocalDate(dt);
-  return (
-    String(d.getHours()).padStart(2, "0") +
-    ":" +
-    String(d.getMinutes()).padStart(2, "0")
-  );
-}
+// Detect academic slot type based on Summary/Title
+const detectSlotType = (summary) => {
+  const s = summary ? summary.toUpperCase() : "";
+  if (s.includes("MIDSEM") || s.includes("QUIZ") || s.includes("TEST")) return "EXAM";
+  if (s.includes("COMPRE") || s.includes("ENDSEM")) return "EXAM";
+  if (s.includes(" L ") || s.includes("LECTURE")) return "L";
+  if (s.includes(" T ") || s.includes("TUTORIAL")) return "T";
+  if (s.includes(" P ") || s.includes("PRACTICAL") || s.includes("LAB")) return "P";
+  return "L"; // Default fallback
+};
 
-function getWeekday(dt) {
-  const d = toLocalDate(dt);
-  return ["SU", "MO", "TU", "WE", "TH", "FR", "SA"][d.getDay()];
-}
+// --- MAIN PARSER ---
 
-
-function emptySubject(code) {
-  return {
-    id: crypto.randomUUID(),
-    code,
-    name: "",
-    sections: {},
-    exams: [],
-  };
-}
-
-// =======================
-// MAIN IMPORT FUNCTION
-// =======================
-
-export function importICS(text) {
-  const lines = text.split(/\r?\n/);
-
-  const subjects = {};
-  let current = null;
-
-  function commitEvent(ev) {
-    if (!ev.summary || !ev.start || !ev.end) return;
-
-    const codeMatch = ev.summary.match(COURSE_CODE_REGEX);
-    const sectionMatch = ev.summary.match(SECTION_REGEX);
-
-    // ---------- EXAM ----------
-    if (/exam|midsem|compre|quiz/i.test(ev.summary)) {
-      if (!codeMatch) return;
-
-      const code = codeMatch[1];
-      subjects[code] ||= emptySubject(code);
-
-      subjects[code].exams.push({
-        title: ev.summary.trim(),
-        date: ev.start.slice(0, 4) + "-" +
-              ev.start.slice(4, 6) + "-" +
-              ev.start.slice(6, 8),
-        startTime: parseTime(ev.start),
-        endTime: parseTime(ev.end),
-      });
-      return;
-    }
-
-    // ---------- LECTURE ----------
-    if (!codeMatch || !sectionMatch) return;
-
-    const code = codeMatch[1];
-    const section = sectionMatch[1].toUpperCase();
-    const day = getWeekday(ev.start);
-
-    if (!DAY_MAP[day]) return; // drop weekends
-
-    subjects[code] ||= emptySubject(code);
-    subjects[code].name ||= ev.description?.split("\n")[0] || "";
-
-    subjects[code].sections[section] ||= {
-      section,
-      instructor: "",
-      slots: [],
-    };
-
-    const sec = subjects[code].sections[section];
-
-    if (!sec.instructor && ev.description) {
-      const instLine = ev.description
-        .split("\n")
-        .find(l => /Instructor:/i.test(l));
-      if (instLine) {
-        sec.instructor = instLine.replace(/Instructor:/i, "").trim();
-      }
-    }
-
-    sec.slots.push({
-      day,
-      startTime: parseTime(ev.start),
-      endTime: parseTime(ev.end),
-      room: ev.location || "",
-    });
-  }
-
-  // =======================
-  // ICS PARSING
-  // =======================
+export const parseICS = (icsContent) => {
+  if (!icsContent) return [];
+  const unfolded = unfoldLines(icsContent);
+  const lines = unfolded.split(/\r\n|\n|\r/);
+  
+  const events = [];
+  let currentEvent = null;
+  let insideEvent = false;
 
   for (const line of lines) {
-    if (line === "BEGIN:VEVENT") {
-      current = {};
-    } else if (line === "END:VEVENT") {
-      commitEvent(current);
-      current = null;
-    } else if (!current) continue;
-    else if (line.startsWith("SUMMARY:")) {
-      current.summary = line.slice(8).trim();
-    } else if (line.startsWith("DTSTART")) {
-      current.start = line.split(":")[1];
-    } else if (line.startsWith("DTEND")) {
-      current.end = line.split(":")[1];
-    } else if (line.startsWith("LOCATION:")) {
-      current.location = line.slice(9).trim();
-    } else if (line.startsWith("DESCRIPTION:")) {
-      current.description = line.slice(12).replace(/\\n/g, "\n");
+    if (line.startsWith("BEGIN:VEVENT")) {
+      currentEvent = { raw: {} };
+      insideEvent = true;
+      continue;
+    }
+
+    if (line.startsWith("END:VEVENT")) {
+      insideEvent = false;
+      if (currentEvent) {
+        // Normalize immediately upon closing the block
+        const start = parseICSDate(currentEvent.raw["DTSTART"]);
+        const end = parseICSDate(currentEvent.raw["DTEND"]);
+        const summary = currentEvent.raw["SUMMARY"] || "Unknown Event";
+        
+        if (start && end) {
+           events.push({
+            id: currentEvent.raw["UID"] || `${start.getTime()}-${Math.random()}`,
+            title: summary,
+            location: currentEvent.raw["LOCATION"] || "",
+            description: currentEvent.raw["DESCRIPTION"] || "",
+            start: start, // Keep as Date object
+            end: end,     // Keep as Date object
+            slotType: detectSlotType(summary),
+            isRecurring: !!currentEvent.raw["RRULE"],
+            rrule: currentEvent.raw["RRULE"]
+          });
+        }
+      }
+      currentEvent = null;
+      continue;
+    }
+
+    if (insideEvent) {
+      // Split "KEY:VALUE" safely
+      const colonIndex = line.indexOf(":");
+      if (colonIndex > -1) {
+        const key = line.substring(0, colonIndex).split(";")[0]; 
+        const value = line.substring(colonIndex + 1);
+        currentEvent.raw[key] = value;
+      }
     }
   }
 
-  return Object.values(subjects);
-}
+  return events;
+};

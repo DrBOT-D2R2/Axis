@@ -40,3 +40,9 @@
 .read-the-docs {
   color: #888;
 }
+
+/* optional higher-level page styling */
+h1{font-size:30px;margin:0 0 10px}
+h2{font-size:20px;margin:18px 0}
+h3{font-size:16px;margin:6px 0}
+.muted{color:var(--muted)}

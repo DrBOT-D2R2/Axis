@@ -1,156 +1,73 @@
-import { useState } from "react";
+import React, { useRef } from "react";
+import { useTimetable } from "../hooks/useTimetable";
 import WeeklyGrid from "../components/WeeklyGrid";
-import { importICS } from "../utils/ics";
+import { Upload, Trash2, Info, FileText } from "lucide-react";
 
-const DAY_LABELS = {
-  MO: "Mon",
-  TU: "Tue",
-  WE: "Wed",
-  TH: "Thu",
-  FR: "Fri",
-};
+export default function Timetable() {
+  const { events, importTimetable, clearTimetable } = useTimetable();
+  const fileInputRef = useRef(null);
 
-export default function Timetable({
-  subjects,
-  setSubjects,
-  doneMap,
-  toggleDone,
-}) {
-  const [weekOffset, setWeekOffset] = useState(0);
-
-  // -------- IMPORT HANDLER (STRICT OVERWRITE) --------
-  function handleImport(file) {
+  const handleFileUpload = (e) => {
+    const file = e.target.files[0];
     if (!file) return;
+
     const reader = new FileReader();
-    reader.onload = e => {
-      const imported = importICS(e.target.result);
-      setSubjects(imported); // overwrite old data
+    reader.onload = (event) => {
+      importTimetable(event.target.result);
     };
     reader.readAsText(file);
-  }
+  };
 
   return (
-    <>
-      {/* ================= HEADER ================= */}
-      <section className="section">
-        <div className="card">
-          <h2>Timetable</h2>
-          <div className="small">
-            Weekly academic schedule (Mon–Fri)
-          </div>
+    <div className="max-w-[1600px] mx-auto h-[calc(100vh-100px)] flex flex-col space-y-6">
+      
+      {/* HEADER CARD - Now uses premium-card to sync with theme */}
+      <div className="premium-card p-5 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+        <div>
+          <h1 className="text-2xl font-bold text-[var(--app-text)] tracking-tight">Academic Timetable</h1>
+          <p className="text-sm text-[var(--app-text-muted)] flex items-center gap-2 mt-1">
+            <FileText size={14} /> {events.length} events loaded
+          </p>
         </div>
-      </section>
-
-      {/* ================= IMPORT ================= */}
-      <section className="section">
-        <h3>Import</h3>
-        <div className="card">
-          <input
-            type="file"
-            accept=".ics"
-            onChange={e => handleImport(e.target.files[0])}
+        
+        <div className="flex gap-3">
+          <button 
+            onClick={() => fileInputRef.current?.click()}
+            className="flex items-center gap-2 px-4 py-2 bg-[var(--app-accent)] text-white rounded-lg hover:opacity-90 transition-opacity text-sm font-medium shadow-lg shadow-[var(--app-accent)]/20"
+          >
+            <Upload size={16} /> Import .ics
+          </button>
+          <input 
+            type="file" 
+            accept=".ics" 
+            ref={fileInputRef} 
+            className="hidden" 
+            onChange={handleFileUpload}
           />
-          <div className="small" style={{ marginTop: 6 }}>
-            Strict import: invalid or ambiguous events are dropped
-          </div>
+          
+          {events.length > 0 && (
+            <button 
+              onClick={() => { if(confirm("Clear all timetable data?")) clearTimetable(); }}
+              className="flex items-center gap-2 px-4 py-2 bg-transparent border border-[var(--app-border)] text-[var(--app-danger)] rounded-lg hover:bg-[var(--app-surface-hover)] transition-colors text-sm font-medium"
+            >
+              <Trash2 size={16} /> Clear
+            </button>
+          )}
         </div>
-      </section>
+      </div>
 
-      {/* ================= WEEK NAV ================= */}
-      <section className="section">
-        <div className="row-between">
-          <button onClick={() => setWeekOffset(w => w - 1)}>
-            ← Previous Week
-          </button>
-          <button onClick={() => setWeekOffset(0)}>
-            This Week
-          </button>
-          <button onClick={() => setWeekOffset(w => w + 1)}>
-            Next Week →
-          </button>
+      {/* GRID AREA */}
+      {events.length === 0 ? (
+        <div className="flex-1 flex flex-col items-center justify-center rounded-xl border-2 border-dashed border-[var(--app-border)] bg-[var(--app-surface)]/50">
+          <Info className="text-[var(--app-text-muted)] mb-3" size={40} />
+          <p className="text-[var(--app-text)] font-medium text-lg">No timetable imported</p>
+          <p className="text-sm text-[var(--app-text-muted)] mt-1">Upload your BITS ERP .ics file to view your schedule</p>
         </div>
-      </section>
-
-      {/* ================= WEEKLY GRID ================= */}
-      <section className="section timetable-grid-sandbox">
-        <WeeklyGrid
-          subjects={subjects}
-          doneMap={doneMap}
-          toggleDone={toggleDone}
-          weekOffset={weekOffset}
-        />
-      </section>
-
-      {/* ================= SUBJECTS ================= */}
-      <section className="section">
-        <h3>Subjects</h3>
-
-        {subjects.length === 0 && (
-          <div className="card small">No subjects imported</div>
-        )}
-
-        {subjects.map(sub => {
-          // ---- derive timings ----
-          const timings = {};
-          Object.values(sub.sections || {}).forEach(sec => {
-            sec.slots.forEach(s => {
-              timings[s.day] ||= [];
-              timings[s.day].push(`${s.startTime}–${s.endTime}`);
-            });
-          });
-
-          return (
-            <div key={sub.id} className="card">
-              <div className="row-between">
-                <strong>{sub.code}</strong>
-                <button
-                  onClick={() =>
-                    setSubjects(prev =>
-                      prev.filter(x => x.id !== sub.id)
-                    )
-                  }
-                >
-                  Delete
-                </button>
-              </div>
-
-              {/* Timings */}
-              {Object.keys(timings).length > 0 && (
-                <div className="small" style={{ marginTop: 6 }}>
-                  {Object.entries(timings).map(([day, ts]) => (
-                    <div key={day}>
-                      {DAY_LABELS[day]}: {ts.join(", ")}
-                    </div>
-                  ))}
-                </div>
-              )}
-
-              {/* Sections */}
-              <div className="small" style={{ marginTop: 6 }}>
-                {Object.values(sub.sections || {}).map(sec => (
-                  <div key={sec.section}>
-                    {sec.section} —{" "}
-                    {sec.instructor || "Instructor TBA"}
-                  </div>
-                ))}
-              </div>
-
-              {/* Exams */}
-              {sub.exams?.length > 0 && (
-                <div className="small" style={{ marginTop: 6 }}>
-                  Exams:
-                  {sub.exams.map((e, i) => (
-                    <div key={i}>
-                      {e.title} — {e.date}{" "}
-                      {e.startTime}
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-          );
-        })}
-      </section>
-    </>
+      ) : (
+        <div className="flex-1 premium-card overflow-hidden relative shadow-none">
+          <WeeklyGrid events={events} />
+        </div>
+      )}
+    </div>
   );
 }

@@ -1,102 +1,68 @@
-import { useState, useEffect } from "react";
-import Home from "./pages/Home";
-import Gym from "./pages/Gym";
-import Timetable from "./pages/Timetable";
-import { load, save } from "./utils/storage";
-import "./index.css";
+import React, { useEffect } from "react";
+import { BrowserRouter, Routes, Route, Navigate, useLocation } from "react-router-dom";
+import { AnimatePresence, motion } from "framer-motion"; // Animation Lib
+import Sidebar from "./components/Sidebar";
+import { useSettings } from "./hooks/useSettings";
 
-export default function App() {
-  // navigation
-  const [view, setView] = useState("home");
+// Pages
+import Home from "./pages/home";
+import Timetable from "./pages/timetable";
+import Gym from "./pages/gym";
+import Expenses from "./pages/expenses";
+import Settings from "./pages/settings";
 
-  // theme
-  const [theme, setTheme] = useState(load("theme", "light"));
+// Animated Page Wrapper
+const PageTransition = ({ children }) => (
+  <motion.div
+    initial={{ opacity: 0, y: 10 }}
+    animate={{ opacity: 1, y: 0 }}
+    exit={{ opacity: 0, y: -10 }}
+    transition={{ duration: 0.2 }}
+    className="h-full"
+  >
+    {children}
+  </motion.div>
+);
 
-  // timetable (subject-centric)
-  const [subjects, setSubjects] = useState(load("subjects", []));
-
-  // gym
-  const [gymLibrary, setGymLibrary] = useState(load("gymLibrary", {}));
-  const [gymRegime, setGymRegime] = useState(
-    load("gymRegime", Array.from({ length: 14 }, () => []))
-  );
-
-  // attendance / progress
-  const [doneMap, setDoneMap] = useState(load("doneMap", {}));
-
-  // ---------- persistence ----------
-  useEffect(() => {
-    document.documentElement.dataset.theme = theme;
-    save("theme", theme);
-  }, [theme]);
-
-  useEffect(() => save("subjects", subjects), [subjects]);
-  useEffect(() => save("gymLibrary", gymLibrary), [gymLibrary]);
-  useEffect(() => save("gymRegime", gymRegime), [gymRegime]);
-  useEffect(() => save("doneMap", doneMap), [doneMap]);
-
-  const toggleDone = key =>
-    setDoneMap(prev => ({ ...prev, [key]: !prev[key] }));
-
+function AnimatedRoutes() {
+  const location = useLocation();
   return (
-    <>
-      <header>
-        <button
-          className={view === "home" ? "primary" : ""}
-          onClick={() => setView("home")}
-        >
-          Home
-        </button>
-
-        <button
-          className={view === "gym" ? "primary" : ""}
-          onClick={() => setView("gym")}
-        >
-          Gym
-        </button>
-
-        <button
-          className={view === "timetable" ? "primary" : ""}
-          onClick={() => setView("timetable")}
-        >
-          Timetable
-        </button>
-
-        <button
-          onClick={() => setTheme(t => (t === "light" ? "dark" : "light"))}
-        >
-          {theme === "light" ? "🌙" : "☀️"}
-        </button>
-      </header>
-
-      {view === "home" && (
-        <Home
-          subjects={subjects}
-          gymLibrary={gymLibrary}
-          gymRegime={gymRegime}
-          doneMap={doneMap}
-          toggleDone={toggleDone}
-          navigate={setView}
-        />
-      )}
-
-      {view === "gym" && (
-        <Gym
-          gymLibrary={gymLibrary}
-          setGymLibrary={setGymLibrary}
-          gymRegime={gymRegime}
-          setGymRegime={setGymRegime}
-        />
-      )}
-
-      {view === "timetable" && (
-        <Timetable
-          subjects={subjects}
-          setSubjects={setSubjects}
-          doneMap={doneMap}
-          toggleDone={toggleDone}
-        />
-      )}
-    </>
+    <AnimatePresence mode="wait">
+      <Routes location={location} key={location.pathname}>
+        <Route path="/" element={<PageTransition><Home /></PageTransition>} />
+        <Route path="/timetable" element={<PageTransition><Timetable /></PageTransition>} />
+        <Route path="/gym" element={<PageTransition><Gym /></PageTransition>} />
+        <Route path="/expenses" element={<PageTransition><Expenses /></PageTransition>} />
+        <Route path="/settings" element={<PageTransition><Settings /></PageTransition>} />
+        <Route path="*" element={<Navigate to="/" replace />} />
+      </Routes>
+    </AnimatePresence>
   );
 }
+
+function App() {
+  // ... inside App component ...
+  const { settings } = useSettings();
+
+  useEffect(() => {
+    // 1. Reset classes
+    document.body.className = "";
+    
+    // 2. Apply theme (Graphite is default/root, others are classes)
+    if (settings.theme !== 'graphite') {
+      document.body.classList.add(`theme-${settings.theme}`);
+    }
+  }, [settings.theme]);
+// ...
+  return (
+    <BrowserRouter>
+      <div className="bg-app-bg text-app-text min-h-screen font-sans selection:bg-app-accent selection:text-white">
+        <Sidebar>
+          <AnimatedRoutes />
+        </Sidebar>
+      </div>
+    </BrowserRouter>
+  );
+}
+
+export default App;

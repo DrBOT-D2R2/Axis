@@ -1,0 +1,66 @@
+.timetable-page {
+  max-width: 1400px;
+  margin: 0 auto;
+  padding: 24px;
+}
+
+.ics-input {
+  margin-bottom: 16px;
+}
+
+.timetable-grid {
+  display: flex;
+  position: relative;
+  border-top: 1px solid rgba(255,255,255,0.08);
+}
+
+.time-col {
+  width: 70px;
+}
+
+.time-slot {
+  height: 60px;
+  font-size: 12px;
+  color: #aaa;
+  border-bottom: 1px solid rgba(255,255,255,0.05);
+}
+
+.day-col {
+  flex: 1;
+  position: relative;
+  border-left: 1px solid rgba(255,255,255,0.05);
+}
+
+.day-header {
+  height: 32px;
+  text-align: center;
+  font-weight: 600;
+  border-bottom: 1px solid rgba(255,255,255,0.08);
+}
+
+.event {
+  position: absolute;
+  left: 6px;
+  right: 6px;
+  background: rgba(255,255,255,0.06);
+  border-left: 4px solid #4dabf7;
+  border-radius: 6px;
+  padding: 6px 8px;
+  font-size: 12px;
+  overflow: hidden;
+}
+
+.event.exam {
+  border-left-color: #ff6b6b;
+  background: rgba(255,80,80,0.12);
+}
+
+.event-title {
+  font-weight: 600;
+}
+
+.event-time,
+.event-room {
+  opacity: 0.8;
+  font-size: 11px;
+}

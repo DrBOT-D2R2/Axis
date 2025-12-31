@@ -1,25 +1,12 @@
-export default function SlotBlock({
-  slot,
-  rowStart,
-  rowSpan,
-  done,
-  onToggle,
-}) {
+import { toHHMM } from "../utils/time";
+
+export default function SlotBlock({ event }) {
   return (
-    <div
-      className={`week-slot ${done ? "done" : ""}`}
-      style={{
-        gridRow: `${rowStart} / span ${rowSpan}`,
-        borderLeftColor: slot.color,
-      }}
-      onClick={onToggle}
-    >
-      <strong>{slot.code}</strong>
-      <div className="small">
-        {slot.startTime}–{slot.endTime}
+    <div className={`slot ${event.type}`}>
+      <div className="slot-title">{event.title}</div>
+      <div className="slot-time">
+        {toHHMM(event.start)} – {toHHMM(event.end)}
       </div>
-      <div className="small">{slot.location}</div>
-      {done && <div className="week-slot-check">✔</div>}
     </div>
   );
 }

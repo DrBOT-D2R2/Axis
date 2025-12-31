@@ -4,7 +4,7 @@ export default function TimeColumn({ hours }) {
       className="time-col"
       style={{
         display: "grid",
-        gridTemplateRows: `repeat(${hours.length}, 60px)`,
+        gridTemplateRows: `repeat(${hours.length}, 60px)`
       }}
     >
       {hours.map(t => {

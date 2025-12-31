@@ -1,117 +1,69 @@
-import SlotBlock from "./SlotBlock";
-import TimeColumn from "./TimeColumn";
+import React from "react";
+import { toDate } from "../utils/time";
 
-const DAYS = ["MO", "TU", "WE", "TH", "FR"];
-const LABELS = ["Mon", "Tue", "Wed", "Thu", "Fri"];
+const HOURS = Array.from({ length: 13 }, (_, i) => i + 8); // 8 AM to 8 PM
+const DAYS = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"];
 
-const toMinutes = t => {
-  const [h, m] = t.split(":").map(Number);
-  return h * 60 + m;
-};
-
-export default function WeeklyGrid({
-  subjects,
-  doneMap,
-  toggleDone,
-}) {
-  // ---------- FLATTEN ALL SLOTS ----------
-  const slots = [];
-
-  subjects.forEach(sub => {
-    Object.values(sub.sections || {}).forEach(sec => {
-      sec.slots.forEach(s => {
-        slots.push({
-          code: sub.code,
-          section: sec.section,
-          instructor: sec.instructor,
-          day: s.day,
-          startMin: toMinutes(s.startTime),
-          endMin: toMinutes(s.endTime),
-          startTime: s.startTime,
-          endTime: s.endTime,
-          room: s.room,
-          color: sub.color || "#3b82f6",
-        });
-      });
+export default function WeeklyGrid({ events }) {
+  
+  const getEventsForSlot = (dayName, hour) => {
+    return events.filter(e => {
+      const d = toDate(e.start);
+      const eventDayIndex = d.getDay(); 
+      const dayNameIndex = DAYS.indexOf(dayName) + 1; 
+      const eventHour = d.getHours();
+      return (
+        e.isRecurring && 
+        eventDayIndex === dayNameIndex && 
+        eventHour === hour &&
+        !e.slotType.includes("EXAM")
+      );
     });
-  });
-
-  if (slots.length === 0) {
-    return <div className="card small">No classes</div>;
-  }
-
-  // ---------- TIME RANGE ----------
-  const minTime =
-    Math.floor(Math.min(...slots.map(s => s.startMin)) / 60) * 60;
-  const maxTime =
-    Math.ceil(Math.max(...slots.map(s => s.endMin)) / 60) * 60;
-
-  const hours = [];
-  for (let t = minTime; t <= maxTime; t += 60) hours.push(t);
-
-  // ---------- GROUP BY DAY + START HOUR ----------
-  const grouped = {};
-  slots.forEach(s => {
-    const hourBucket = Math.floor((s.startMin - minTime) / 60);
-    const key = `${s.day}|${hourBucket}`;
-    grouped[key] ||= [];
-    grouped[key].push(s);
-  });
-
-  const today = new Date();
-  const todayStr = today.toISOString().slice(0, 10);
+  };
 
   return (
-    <div className="week-grid-root">
-      {/* HEADER */}
-      <div className="week-grid-header">
-        <div />
-        {LABELS.map(l => (
-          <div key={l} className="week-grid-day">
-            {l}
-          </div>
-        ))}
-      </div>
+    <div className="h-full overflow-auto bg-[var(--app-bg)] rounded-xl border border-[var(--app-border)]">
+      <div className="min-w-[800px]">
+        {/* Header Row */}
+        <div className="grid grid-cols-[60px_repeat(5,1fr)] bg-[var(--app-surface)] border-b border-[var(--app-border)] sticky top-0 z-10">
+          <div className="p-3 text-xs font-semibold text-app-text-muted text-center border-r border-[var(--app-border)]">TIME</div>
+          {DAYS.map(day => (
+            <div key={day} className="p-3 text-sm font-bold text-app-text text-center uppercase border-r border-[var(--app-border)] last:border-r-0">
+              {day}
+            </div>
+          ))}
+        </div>
 
-      {/* BODY */}
-      <div
-        className="week-grid-body"
-        style={{
-          gridTemplateRows: `repeat(${hours.length}, 60px)`,
-        }}
-      >
-        <TimeColumn hours={hours} />
+        {/* Grid Body */}
+        {HOURS.map(hour => (
+          <div key={hour} className="grid grid-cols-[60px_repeat(5,1fr)] border-b border-[var(--app-border)] min-h-[100px]">
+            {/* Time Label */}
+            <div className="p-2 text-xs font-medium text-app-text-muted text-center border-r border-[var(--app-border)] bg-[var(--app-surface)]/50">
+              {hour}:00
+            </div>
 
-        {DAYS.map(day => (
-          <div
-            key={day}
-            className="week-grid-col"
-            style={{
-              gridTemplateRows: `repeat(${hours.length}, 60px)`,
-            }}
-          >
-            {hours.map((_, rowIdx) => {
-              const key = `${day}|${rowIdx}`;
-              const bucket = grouped[key] || [];
-
-              if (bucket.length === 0) return null;
-
+            {/* Days */}
+            {DAYS.map(day => {
+              const slotEvents = getEventsForSlot(day, hour);
               return (
-                <div
-                  key={key}
-                  style={{ gridRow: rowIdx + 1 }}
-                >
-                  {bucket.map((s, i) => {
-                    const slotKey = `${todayStr}|${s.code}|${s.day}|${s.startTime}`;
-                    return (
-                      <SlotBlock
-                        key={i}
-                        slot={s}
-                        done={!!doneMap[slotKey]}
-                        onToggle={() => toggleDone(slotKey)}
-                      />
-                    );
-                  })}
+                <div key={`${day}-${hour}`} className="p-1 border-r border-[var(--app-border)] last:border-r-0 relative group hover:bg-[var(--app-surface-hover)] transition-colors">
+                  {slotEvents.map(ev => (
+                    <div 
+                      key={ev.id}
+                      className={`
+                        p-2 rounded-md text-xs border mb-1 cursor-pointer transition-transform hover:scale-[1.02]
+                        ${ev.slotType === "L" 
+                          ? "bg-blue-500/10 border-blue-500/20 text-blue-400"  /* Lecture */
+                          : ev.slotType === "P" 
+                            ? "bg-purple-500/10 border-purple-500/20 text-purple-400" /* Practical */
+                            : "bg-orange-500/10 border-orange-500/20 text-orange-400" /* Tutorial */
+                        }
+                      `}
+                    >
+                      <div className="font-bold truncate opacity-90">{ev.title}</div>
+                      <div className="opacity-75 truncate text-[10px]">{ev.location}</div>
+                    </div>
+                  ))}
                 </div>
               );
             })}
