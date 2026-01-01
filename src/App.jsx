@@ -10,7 +10,7 @@ import { useAuth } from './context/AuthContext';
 import Sidebar from "./components/Sidebar";
 
 // Pages
-import login from './pages/login';
+import Login from './pages/Login';
 import Home from "./pages/home";
 import Timetable from "./pages/timetable";
 import Gym from "./pages/gym";
@@ -74,7 +74,7 @@ function App() {
 
   // 2. Unauthenticated State (Show Login)
   if (!user) {
-    return <login />;
+    return <Login />;
   }
 
   // 3. Authenticated App (Show Sidebar + Routes)
