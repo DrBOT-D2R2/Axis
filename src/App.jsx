@@ -10,7 +10,7 @@ import { useAuth } from './context/AuthContext';
 import Sidebar from "./components/Sidebar";
 
 // Pages
-import login from './pages/login';
+import Login from './pages/login';
 import Home from "./pages/home";
 import Timetable from "./pages/timetable";
 import Gym from "./pages/gym";
