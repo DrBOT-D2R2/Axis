@@ -10,7 +10,7 @@ import { useAuth } from './context/AuthContext';
 import Sidebar from "./components/Sidebar";
 
 // Pages
-import Login from './pages/Login';
+import login from './pages/login';
 import Home from "./pages/home";
 import Timetable from "./pages/timetable";
 import Gym from "./pages/gym";
@@ -59,7 +59,7 @@ function App() {
       document.body.classList.add(`theme-${settings.theme}`);
     }
   }, [settings.theme]);
-  
+
   // 1. Loading State (Prevents flash of Login screen)
   if (loading) {
     return (
@@ -74,7 +74,7 @@ function App() {
 
   // 2. Unauthenticated State (Show Login)
   if (!user) {
-    return <Login />;
+    return <login />;
   }
 
   // 3. Authenticated App (Show Sidebar + Routes)
