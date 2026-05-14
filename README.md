@@ -1,4 +1,4 @@
-# About Axis
+# About Axis (CURRENTLY DOWN FOR REWORKING AND UPDATES)
 
 Hola, I'm Druhin, the mastermind behind Axis. 👋
 
