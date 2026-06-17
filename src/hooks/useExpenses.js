@@ -4,13 +4,12 @@ import { useAuth } from "../context/AuthContext";
 
 export function useExpenses() {
   const { user } = useAuth();
-  const [transactions, setTransactions] = useState([]);
+  const [expenses, setExpenses] = useState([]);
   const [budgetLimit, setBudgetLimit] = useState(5000); 
-  const [isLoaded, setIsLoaded] = useState(false); // Added state to break the loop
+  const [isLoaded, setIsLoaded] = useState(false);
 
   // FETCH ON LOAD
   useEffect(() => {
-    // If there's no user (logged out), we are technically "loaded" with empty data
     if (!user) {
       setIsLoaded(true);
       return;
@@ -19,16 +18,16 @@ export function useExpenses() {
     const load = async () => {
       try {
         const { data, error } = await supabase
-          .from('transactions')
+          .from('expenses')
           .select('*')
+          .eq('user_id', user.id)
           .order('date', { ascending: false });
-        
+
         if (error) throw error;
-        if (data) setTransactions(data);
+        if (data) setExpenses(data);
       } catch (error) {
         console.error("Error loading expenses:", error.message);
       } finally {
-        // This ensures that even if there is an error, the loading screen disappears
         setIsLoaded(true);
       }
     };
@@ -37,42 +36,50 @@ export function useExpenses() {
   }, [user]);
 
   // ADD
-  const addTransaction = async (tx) => {
-    if (!user) return;
-    
-    const newTx = { 
+  const addExpense = async (amount, category) => {
+    if (!user || !amount) return;
+
+    const newExpense = { 
       user_id: user.id, 
-      amount: parseFloat(tx.amount), 
-      category: tx.category, 
-      type: tx.type || 'EXPENSE',
+      amount: parseFloat(amount), 
+      category: category, 
       date: new Date().toISOString() 
     };
-    
-    const tempId = Date.now();
-    setTransactions([{ ...newTx, id: tempId }, ...transactions]);
 
-    const { data, error } = await supabase.from('transactions').insert([newTx]).select();
-    
+    // Optimistic Update
+    const tempId = Date.now();
+    setExpenses(prev => [{ ...newExpense, id: tempId }, ...prev]);
+
+    const { data, error } = await supabase.from('expenses').insert([newExpense]).select();
+
     if (data) {
-      setTransactions(prev => prev.map(t => t.id === tempId ? data[0] : t));
+      setExpenses(prev => prev.map(t => t.id === tempId ? data[0] : t));
     }
-    if (error) console.error("Sync error:", error);
+    if (error) {
+      console.error("Sync error:", error);
+      // Rollback on error
+      setExpenses(prev => prev.filter(t => t.id !== tempId));
+    }
   };
 
   // DELETE
-  const deleteTransaction = async (id) => {
-    setTransactions(prev => prev.filter(t => t.id !== id));
-    const { error } = await supabase.from('transactions').delete().eq('id', id);
-    if (error) console.error("Delete error:", error);
+  const deleteExpense = async (id) => {
+    const original = [...expenses];
+    setExpenses(prev => prev.filter(t => t.id !== id));
+
+    const { error } = await supabase.from('expenses').delete().eq('id', id);
+    if (error) {
+      console.error("Delete error:", error);
+      setExpenses(original); // Rollback
+    }
   };
 
-  // Ensure isLoaded is returned so Home.jsx can see it
   return { 
-    transactions, 
+    expenses, 
     budgetLimit, 
     setBudgetLimit, 
-    addTransaction, 
-    deleteTransaction, 
+    addExpense, 
+    deleteExpense, 
     isLoaded 
   };
 }

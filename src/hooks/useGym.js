@@ -103,10 +103,28 @@ export function useGym() {
     saveToCloud(newT, schedule);
   };
 
+  const logSession = async (template) => {
+    if (!user || !template) return;
+    
+    const logs = (template.exercises || []).map(ex => ({
+      user_id: user.id,
+      exercise: ex.name,
+      weight: parseFloat(ex.weight || 0), // Default to 0 if not set
+      date: new Date().toISOString()
+    }));
+
+    if (logs.length > 0) {
+      const { error } = await supabase.from('gym_logs').insert(logs);
+      if (error) console.error("Failed to log gym session:", error);
+      else alert(`${template.name} session logged!`);
+    }
+  };
+
   return { 
     schedule, templates, isLoaded, 
     getTodayCycleIndex, resetCycle,
     assignTemplateToDay, updateTemplateName, 
-    addExercise, updateExercise, deleteExercise 
+    addExercise, updateExercise, deleteExercise,
+    logSession
   };
 }

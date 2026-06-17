@@ -1,49 +1,24 @@
-import React, { useState, useEffect } from "react";
-import { useAuth } from "../context/AuthContext";
-import { supabase } from "../lib/supabase";
+import React, { useState } from "react";
+import { useExpenses } from "../hooks/useExpenses";
 import { Plus, Trash2, Wallet, TrendingUp, PieChart, Calendar } from "lucide-react";
-import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from 'recharts';
+import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
 
 export default function Expenses() {
-  const { user } = useAuth();
-  const [expenses, setExpenses] = useState([]);
+  const { expenses, budgetLimit, addExpense, deleteExpense, isLoaded } = useExpenses();
   const [amount, setAmount] = useState("");
   const [category, setCategory] = useState("Food");
-  const [monthlyLimit] = useState(5000); 
 
-  useEffect(() => {
-    if (user) {
-      const fetchExpenses = async () => {
-        const { data } = await supabase.from('expenses').select('*').eq('user_id', user.id).order('date', { ascending: false });
-        if (data) setExpenses(data);
-      };
-      fetchExpenses();
-    }
-  }, [user]);
-
-  const addExpense = async () => {
+  const handleAdd = async () => {
     if (!amount) return;
-    const newExpense = {
-      user_id: user.id,
-      amount: parseFloat(amount),
-      category,
-      date: new Date().toISOString()
-    };
-    setExpenses([newExpense, ...expenses]);
+    await addExpense(amount, category);
     setAmount("");
-    await supabase.from('expenses').insert([newExpense]);
   };
 
-  const deleteExpense = async (id, index) => {
-    const newExpenses = [...expenses];
-    newExpenses.splice(index, 1);
-    setExpenses(newExpenses);
-    if (id) await supabase.from('expenses').delete().eq('id', id);
-  };
+  if (!isLoaded) return <div className="h-full flex items-center justify-center text-text-muted font-heading animate-pulse">Syncing Finances...</div>;
 
   const totalSpent = expenses.reduce((sum, item) => sum + item.amount, 0);
-  const remaining = monthlyLimit - totalSpent;
-  const progress = Math.min((totalSpent / monthlyLimit) * 100, 100);
+  const remaining = budgetLimit - totalSpent;
+  const progress = Math.min((totalSpent / budgetLimit) * 100, 100);
 
   const categoryData = Object.entries(expenses.reduce((acc, curr) => {
     acc[curr.category] = (acc[curr.category] || 0) + curr.amount;
@@ -73,7 +48,7 @@ export default function Expenses() {
             />
           </div>
           <p className="text-right text-xs text-text-muted mt-2 font-mono">
-            {Math.round(progress)}% of ₹{monthlyLimit.toLocaleString()} Budget
+            {Math.round(progress)}% of ₹{budgetLimit.toLocaleString()} Budget
           </p>
         </div>
 
@@ -110,7 +85,7 @@ export default function Expenses() {
                   />
                 </div>
               </div>
-              
+
               <div className="w-full sm:w-48">
                 <label className="block text-xs font-bold text-text-muted uppercase mb-2 ml-1">Category</label>
                 <select 
@@ -123,7 +98,7 @@ export default function Expenses() {
               </div>
 
               <button 
-                onClick={addExpense}
+                onClick={handleAdd}
                 className="w-full sm:w-auto bg-accent hover:opacity-90 text-bg p-3.5 rounded-xl transition-all shadow-lg active:scale-95 flex justify-center items-center"
               >
                 <Plus size={24} strokeWidth={3} />
@@ -134,8 +109,8 @@ export default function Expenses() {
           {/* LIST SECTION */}
           <div className="space-y-3">
             <h3 className="text-xs font-bold text-text-muted uppercase tracking-widest pl-2">Recent Transactions</h3>
-            {expenses.map((ex, i) => (
-              <div key={i} className="group flex justify-between items-center p-4 bg-surface border border-border rounded-2xl hover:border-accent/50 transition-all hover:translate-x-1">
+            {expenses.map((ex) => (
+              <div key={ex.id} className="group flex justify-between items-center p-4 bg-surface border border-border rounded-2xl hover:border-accent/50 transition-all hover:translate-x-1">
                 <div className="flex items-center gap-4">
                   <div className="w-10 h-10 rounded-full bg-bg flex items-center justify-center text-text-muted font-bold border border-border">
                     {ex.category[0]}
@@ -150,7 +125,7 @@ export default function Expenses() {
                 <div className="flex items-center gap-4">
                   <span className="font-mono font-bold text-text">₹{ex.amount}</span>
                   <button 
-                    onClick={() => deleteExpense(ex.id, i)}
+                    onClick={() => deleteExpense(ex.id)}
                     className="p-2 text-text-muted hover:text-rose-500 hover:bg-rose-500/10 rounded-lg transition-all"
                   >
                     <Trash2 size={16}/>
@@ -172,7 +147,7 @@ export default function Expenses() {
             <PieChart size={16} className="text-accent"/>
             <h3 className="text-sm font-bold uppercase tracking-widest text-text-muted">Breakdown</h3>
           </div>
-          
+
           <div className="h-64">
             {categoryData.length > 0 ? (
               <ResponsiveContainer width="100%" height="100%">

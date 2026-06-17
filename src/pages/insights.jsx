@@ -8,34 +8,45 @@ import { Download, Dumbbell, BookOpen, Calendar } from "lucide-react";
 export default function Insights() {
   const { user } = useAuth();
   const [activeTab, setActiveTab] = useState('academic');
-  const [attendanceData, setAttendanceData] = useState({});
+  const [attendanceData, setAttendanceData] = useState([]);
   const [gymLogs, setGymLogs] = useState([]);
   const [selectedExercise, setSelectedExercise] = useState('');
 
   useEffect(() => {
     if (user) {
-      // 1. Fetch Attendance
-      supabase.from('user_data').select('attendance_data').eq('user_id', user.id).single()
-        .then(({ data }) => setAttendanceData(data?.attendance_data || {}));
+      // 1. Fetch Attendance from Relational Events Table
+      supabase.from('events').select('title, status').eq('user_id', user.id)
+        .then(({ data }) => {
+          if (data) {
+            const grouped = data.reduce((acc, curr) => {
+              if (!acc[curr.title]) acc[curr.title] = { present: 0, total: 0 };
+              acc[curr.title].total += 1;
+              if (curr.status === 'present') acc[curr.title].present += 1;
+              return acc;
+            }, {});
 
-      // 2. Fetch Gym Logs (Assuming a 'gym_logs' table exists as per standard schema)
+            const chartData = Object.entries(grouped).map(([subject, stats]) => ({
+              subject,
+              present: stats.present,
+              total: stats.total,
+              percentage: Math.round((stats.present / stats.total) * 100)
+            }));
+            setAttendanceData(chartData);
+          }
+        });
+
+      // 2. Fetch Gym Logs
       supabase.from('gym_logs').select('*').eq('user_id', user.id).order('date', { ascending: true })
         .then(({ data }) => setGymLogs(data || []));
     }
   }, [user]);
 
-  // Format Attendance for Chart
-  const attendanceChartData = Object.entries(attendanceData).map(([subject, data]) => {
-    // Handle both old (number) and new (object) formats
-    const present = typeof data === 'number' ? data : data.present;
-    const total = typeof data === 'number' ? data : data.total; // Old format didn't track total well
-    const percentage = total > 0 ? Math.round((present / total) * 100) : 0;
-    return { subject, percentage, present, total };
-  });
+  // Attendance Chart Data is already formatted
+  const attendanceChartData = attendanceData;
 
   // Format Gym Data
-  const uniqueExercises = [...new Set(gymLogs.map(log => log.exercise_name))];
-  const gymChartData = gymLogs.filter(log => log.exercise_name === selectedExercise).map(log => ({
+  const uniqueExercises = [...new Set(gymLogs.map(log => log.exercise || log.exercise_name))];
+  const gymChartData = gymLogs.filter(log => (log.exercise || log.exercise_name) === selectedExercise).map(log => ({
     date: new Date(log.date).toLocaleDateString(undefined, {month:'short', day:'numeric'}),
     weight: log.weight
   }));

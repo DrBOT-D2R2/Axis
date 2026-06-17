@@ -4,58 +4,60 @@ import { useAuth } from "../context/AuthContext";
 
 export function useTimetable() {
   const { user } = useAuth();
-  const [timetable, setTimetable] = useState({});
-  const [exams, setExams] = useState([]);
   const [todaysClasses, setTodaysClasses] = useState([]);
   const [isLoaded, setIsLoaded] = useState(false);
 
   useEffect(() => {
     if (!user) { setIsLoaded(true); return; }
-    
-    const fetchTimetable = async () => {
+
+    const fetchAndMigrate = async () => {
       try {
-        const { data } = await supabase.from('user_data').select('timetable_json').eq('user_id', user.id).single();
-        
-        if (data?.timetable_json) {
-          const raw = data.timetable_json;
-          
-          // 1. EXTRACT TIMETABLE (Handle Old vs New Structure)
-          // If raw has a .timetable property, use it. Otherwise, assume raw IS the timetable.
-          let tMap = raw.timetable ? raw.timetable : raw;
-          
-          // 2. EXTRACT EXAMS
-          let eList = raw.exams || [];
+        // 1. Check if relational events exist for today or future
+        const { data: existingEvents, error: fetchError } = await supabase
+          .from('events')
+          .select('*')
+          .eq('user_id', user.id)
+          .limit(1);
 
-          setTimetable(tMap);
-          setExams(eList);
+        if (fetchError) throw fetchError;
 
-          // 3. DETERMINE TODAY'S CLASSES
-          // JS: 0=Sun, 1=Mon ... 6=Sat
-          // ICS Standard: 1=Mon ... 7=Sun
-          const jsDay = new Date().getDay();
-          const cycleDay = jsDay === 0 ? 7 : jsDay;
-          
-          // ROBUST LOOKUP: Check number key, string key, and nested structures
-          // Some parsers might output { "1": [...] } and others { 1: [...] }
-          let classes = tMap[cycleDay] || tMap[String(cycleDay)] || [];
+        // 2. MIGRATION BRIDGE: If no relational events exist, try to migrate from legacy JSON
+        if (!existingEvents || existingEvents.length === 0) {
+          const { data: userData } = await supabase
+            .from('user_data')
+            .select('timetable_json')
+            .eq('user_id', user.id)
+            .single();
 
-          // If strictly empty, double check we aren't nested inside another 'timetable' key accidentally
-          if (classes.length === 0 && tMap.timetable) {
-             classes = tMap.timetable[cycleDay] || tMap.timetable[String(cycleDay)] || [];
+          if (userData?.timetable_json) {
+            console.log("Migrating legacy timetable to relational events...");
+            await migrateLegacyToRelational(user.id, userData.timetable_json);
           }
-          
-          // 4. SORT BY TIME (Minutes)
-          if (Array.isArray(classes)) {
-            // Sort based on minutes if available, otherwise string comparison
-            classes.sort((a, b) => {
-              if (a.minutes && b.minutes) return a.minutes - b.minutes;
-              return a.time.localeCompare(b.time);
-            });
-          } else {
-            classes = []; // Safety fallback if not an array
-          }
+        }
 
-          setTodaysClasses(classes);
+        // 3. FETCH TODAY'S CLASSES FROM RELATIONAL TABLE
+        const today = new Date();
+        const startOfDay = new Date(today.setHours(0, 0, 0, 0)).toISOString();
+        const endOfDay = new Date(today.setHours(23, 59, 59, 999)).toISOString();
+
+        const { data: events } = await supabase
+          .from('events')
+          .select('*')
+          .eq('user_id', user.id)
+          .gte('start_time', startOfDay)
+          .lte('start_time', endOfDay)
+          .order('start_time', { ascending: true });
+
+        if (events) {
+          const formatted = events.map(ev => ({
+            id: ev.id,
+            name: ev.title,
+            time: new Date(ev.start_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+            room: ev.location,
+            type: ev.type,
+            status: ev.status
+          }));
+          setTodaysClasses(formatted);
         }
       } catch (err) {
         console.error("Timetable sync failed:", err);
@@ -64,8 +66,58 @@ export function useTimetable() {
       }
     };
 
-    fetchTimetable();
+    fetchAndMigrate();
   }, [user]);
 
-  return { timetable, exams, todaysClasses, isLoaded };
+  // Helper: Migration Logic
+  const migrateLegacyToRelational = async (userId, raw) => {
+    try {
+      const tMap = raw.timetable ? raw.timetable : raw;
+      const newEvents = [];
+      const now = new Date();
+
+      // Expand for the next 7 days starting from Monday of this week
+      const startOfWeek = new Date(now);
+      const day = startOfWeek.getDay();
+      const diff = startOfWeek.getDate() - day + (day === 0 ? -6 : 1);
+      startOfWeek.setDate(diff);
+
+      for (let i = 0; i < 14; i++) { // Migrate 2 weeks
+        const currentDate = new Date(startOfWeek);
+        currentDate.setDate(startOfWeek.getDate() + i);
+        const jsDay = currentDate.getDay();
+        const cycleDay = jsDay === 0 ? 7 : jsDay;
+
+        const dayClasses = tMap[cycleDay] || tMap[String(cycleDay)] || [];
+
+        dayClasses.forEach(cls => {
+          // Parse "09:00" format
+          const [hours, minutes] = cls.time.split(':').map(Number);
+          const startTime = new Date(currentDate);
+          startTime.setHours(hours, minutes, 0, 0);
+
+          const endTime = new Date(startTime);
+          endTime.setHours(startTime.getHours() + 1); // Default 1hr duration
+
+          newEvents.push({
+            user_id: userId,
+            title: cls.name,
+            start_time: startTime.toISOString(),
+            end_time: endTime.toISOString(),
+            location: cls.room,
+            type: cls.type || 'Lecture',
+            status: 'pending'
+          });
+        });
+      }
+
+      if (newEvents.length > 0) {
+        await supabase.from('events').insert(newEvents);
+      }
+    } catch (e) {
+      console.error("Migration failed:", e);
+    }
+  };
+
+  return { todaysClasses, isLoaded };
 }

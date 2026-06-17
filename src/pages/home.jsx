@@ -11,31 +11,36 @@ export default function Home() {
   const { user } = useAuth();
   const { settings } = useSettings();
   const { todaysClasses, isLoaded: timetableLoaded } = useTimetable();
-  const { getTodayCycleIndex, schedule, templates, isLoaded: gymLoaded } = useGym(); 
-  const [attendance, setAttendance] = useState({});
+  const { getTodayCycleIndex, schedule, templates, isLoaded: gymLoaded, logSession } = useGym(); 
+  const [localClasses, setLocalClasses] = useState([]);
 
+  // Keep a local copy of classes to allow optimistic updates
   useEffect(() => {
-    if (user) {
-      supabase.from('user_data').select('attendance_data').eq('user_id', user.id).single()
-        .then(({ data }) => setAttendance(data?.attendance_data || {}));
+    if (todaysClasses) setLocalClasses(todaysClasses);
+  }, [todaysClasses]);
+
+  const handleLogGym = async () => {
+    if (!todayTemplate) return;
+    if (window.confirm(`Log session for ${todayTemplate.name}?`)) {
+      await logSession(todayTemplate);
     }
-  }, [user]);
+  };
 
-  const markAttendance = async (className, status) => {
-    const current = attendance[className] || { present: 0, total: 0, history: [] };
-    const presentCount = typeof current === 'number' ? current : current.present;
-    const totalCount = typeof current === 'number' ? current : current.total;
-    const history = typeof current === 'number' ? [] : current.history;
+  const markAttendance = async (eventId, status) => {
+    // 1. Optimistic Update
+    setLocalClasses(prev => prev.map(c => c.id === eventId ? { ...c, status } : c));
 
-    const updatedRecord = {
-      present: presentCount + (status === 'present' ? 1 : 0),
-      total: totalCount + 1,
-      history: [...history, { date: new Date().toISOString(), status }]
-    };
-
-    const updated = { ...attendance, [className]: updatedRecord };
-    setAttendance(updated);
-    await supabase.from('user_data').update({ attendance_data: updated }).eq('user_id', user.id);
+    // 2. Relational Update (events table)
+    const { error } = await supabase
+      .from('events')
+      .update({ status })
+      .eq('id', eventId);
+    
+    if (error) {
+      console.error("Attendance update failed:", error);
+      // Rollback on error
+      setLocalClasses(todaysClasses);
+    }
   };
 
   const todayIndex = getTodayCycleIndex();
@@ -72,8 +77,8 @@ export default function Home() {
           </div>
           
           <div className="space-y-3">
-            {todaysClasses.length > 0 ? todaysClasses.map((cls, i) => (
-              <div key={i} className="group relative bg-surface border border-border p-4 rounded-xl transition-all hover:border-accent/40 hover:shadow-lg">
+            {localClasses.length > 0 ? localClasses.map((cls, i) => (
+              <div key={i} className={`group relative bg-surface border p-4 rounded-xl transition-all hover:shadow-lg ${cls.status === 'present' ? 'border-emerald-500/50 bg-emerald-500/5' : cls.status === 'absent' ? 'border-rose-500/50 bg-rose-500/5' : 'border-border hover:border-accent/40'}`}>
                 <div className="flex justify-between items-start mb-2">
                   <h3 className="font-bold text-base text-text group-hover:text-accent transition-colors">{cls.name}</h3>
                   <span className={`text-[9px] px-1.5 py-0.5 rounded font-bold uppercase tracking-wider ${cls.type === 'Lecture' ? 'bg-blue-500/10 text-blue-500' : 'bg-orange-500/10 text-orange-500'}`}>
@@ -87,11 +92,17 @@ export default function Home() {
                 </div>
 
                 <div className="flex gap-2">
-                  <button onClick={() => markAttendance(cls.name, 'present')} className="flex-1 py-1.5 rounded-lg bg-emerald-500/10 text-emerald-600 hover:bg-emerald-500 hover:text-white transition-all text-[10px] font-bold flex justify-center items-center gap-1">
-                    <CheckCircle2 size={12}/> Present
+                  <button 
+                    onClick={() => markAttendance(cls.id, 'present')} 
+                    className={`flex-1 py-1.5 rounded-lg transition-all text-[10px] font-bold flex justify-center items-center gap-1 ${cls.status === 'present' ? 'bg-emerald-500 text-white' : 'bg-emerald-500/10 text-emerald-600 hover:bg-emerald-500 hover:text-white'}`}
+                  >
+                    <CheckCircle2 size={12}/> {cls.status === 'present' ? 'Attended' : 'Present'}
                   </button>
-                  <button onClick={() => markAttendance(cls.name, 'absent')} className="flex-1 py-1.5 rounded-lg bg-rose-500/10 text-rose-600 hover:bg-rose-500 hover:text-white transition-all text-[10px] font-bold flex justify-center items-center gap-1">
-                    <XCircle size={12}/> Absent
+                  <button 
+                    onClick={() => markAttendance(cls.id, 'absent')} 
+                    className={`flex-1 py-1.5 rounded-lg transition-all text-[10px] font-bold flex justify-center items-center gap-1 ${cls.status === 'absent' ? 'bg-rose-500 text-white' : 'bg-rose-500/10 text-rose-600 hover:bg-rose-500 hover:text-white'}`}
+                  >
+                    <XCircle size={12}/> {cls.status === 'absent' ? 'Missed' : 'Absent'}
                   </button>
                 </div>
               </div>
@@ -139,8 +150,11 @@ export default function Home() {
                </div>
 
                {todayTemplate ? (
-                 <button className="mt-6 w-full py-3 bg-accent hover:opacity-90 text-bg font-bold rounded-xl shadow-lg shadow-accent/20 transition-all active:scale-[0.98] flex items-center justify-center gap-2 text-sm">
-                   <Play size={16} fill="currentColor"/> Start Session
+                 <button 
+                   onClick={handleLogGym}
+                   className="mt-6 w-full py-3 bg-accent hover:opacity-90 text-bg font-bold rounded-xl shadow-lg shadow-accent/20 transition-all active:scale-[0.98] flex items-center justify-center gap-2 text-sm"
+                 >
+                   <Play size={16} fill="currentColor"/> Log Session
                  </button>
                ) : (
                  <div className="mt-6 p-4 bg-surface-hover rounded-xl border border-border">

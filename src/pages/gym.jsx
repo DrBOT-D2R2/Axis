@@ -6,12 +6,18 @@ import { Edit2, RotateCcw, Plus, Trash2, Calendar, Dumbbell, ChevronRight, Activ
 export default function Gym() {
   const { 
     schedule, templates, getTodayCycleIndex, assignTemplateToDay, 
-    updateTemplateName, addExercise, deleteExercise, updateExercise, resetCycle, isLoaded 
+    updateTemplateName, addExercise, deleteExercise, updateExercise, resetCycle, isLoaded, logSession 
   } = useGym();
   
   const [activeTab, setActiveTab] = useState('schedule');
   const [selectedTemplateId, setSelectedTemplateId] = useState(templates[0]?.id || null);
   const todayIndex = getTodayCycleIndex();
+
+  const handleLogSession = async (template) => {
+    if (window.confirm(`Log session for ${template.name}?`)) {
+      await logSession(template);
+    }
+  };
 
   if (!isLoaded) return <div className="h-full flex items-center justify-center text-text-muted font-heading animate-pulse">Syncing Gym OS...</div>;
 
@@ -66,7 +72,12 @@ export default function Gym() {
                 </div>
                 
                 {isToday && assignedTemplate && (
-                   <button className="w-full py-2 bg-accent text-bg text-[10px] uppercase tracking-wider font-bold rounded-lg hover:opacity-90 transition-colors">Start Session</button>
+                   <button 
+                     onClick={() => handleLogSession(assignedTemplate)}
+                     className="w-full py-2 bg-accent text-bg text-[10px] uppercase tracking-wider font-bold rounded-lg hover:opacity-90 transition-colors"
+                   >
+                     Log Session
+                   </button>
                 )}
               </div>
             );
