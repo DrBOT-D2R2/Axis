@@ -3,7 +3,7 @@ import { supabase } from "../lib/supabase";
 import { useAuth } from "../context/AuthContext";
 import { exportDataForAI } from "../utils/dataHelper";
 import { BarChart, Bar, LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from 'recharts';
-import { Download, Dumbbell, BookOpen, Calendar } from "lucide-react";
+import { Download, Dumbbell, BookOpen, Calendar, TrendingUp, Activity } from "lucide-react";
 
 export default function Insights() {
   const { user } = useAuth();

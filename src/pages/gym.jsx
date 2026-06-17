@@ -1,7 +1,7 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useGym } from "../hooks/useGym";
 import { useGymHistory } from "../hooks/useGymHistory";
-import { Edit2, RotateCcw, Plus, Trash2, Calendar, Dumbbell, ChevronRight, Activity } from "lucide-react";
+import { Edit2, RotateCcw, Plus, Trash2, Calendar, Dumbbell, ChevronRight, Activity, Play } from "lucide-react";
 
 export default function Gym() {
   const { 
