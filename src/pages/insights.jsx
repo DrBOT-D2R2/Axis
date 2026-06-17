@@ -41,7 +41,7 @@ export default function Insights() {
     }
   }, [user]);
 
-  // Attendance Chart Data is already formatted
+  // Attendance Chart Data
   const attendanceChartData = attendanceData;
 
   // Format Gym Data
@@ -51,114 +51,172 @@ export default function Insights() {
     weight: log.weight
   }));
 
+  // Stats
+  const avgAttendance = attendanceData.length > 0 
+    ? Math.round(attendanceData.reduce((acc, curr) => acc + curr.percentage, 0) / attendanceData.length) 
+    : 0;
+
+  const totalWorkouts = new Set(gymLogs.map(l => new Date(l.date).toDateString())).size;
+
   return (
-    <div className="max-w-7xl mx-auto space-y-8 p-6">
+    <div className="max-w-7xl mx-auto space-y-6 md:space-y-8 p-4 md:p-8 text-text">
+
       {/* Header */}
-      <div className="flex justify-between items-center">
+      <div className="flex flex-col md:flex-row justify-between md:items-center gap-6 pb-6 border-b border-border/50">
         <div>
-          <h1 className="text-4xl font-black text-[var(--app-text)]">Insights</h1>
-          <p className="text-sm text-[var(--app-text-muted)]">Track your consistency and progress</p>
+          <h1 className="text-3xl md:text-4xl font-black tracking-tight">Intelligence Dashboard</h1>
+          <p className="text-sm text-text-muted font-medium mt-1">Cross-domain performance analytics</p>
         </div>
         <button 
           onClick={() => exportDataForAI(attendanceData, gymLogs)}
-          className="flex items-center gap-2 px-6 py-3 bg-[var(--app-accent)] text-white font-bold rounded-xl shadow-lg hover:opacity-90 transition-all"
+          className="flex items-center justify-center gap-2 px-6 py-3 bg-surface hover:bg-surface-hover text-text font-black text-xs uppercase tracking-widest rounded-xl border border-border shadow-sm transition-all active:scale-95 group"
         >
-          <Download size={18} /> Export for AI
+          <Download size={16} className="group-hover:-translate-y-0.5 transition-transform" /> Export for AI
         </button>
+      </div>
+
+      {/* Summary Cards */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
+         <div className="premium-card p-6 bg-surface flex items-center gap-5 border-l-4 border-l-accent">
+            <div className="p-3 bg-accent/10 rounded-2xl text-accent">
+               <BookOpen size={24}/>
+            </div>
+            <div>
+               <p className="text-[10px] font-black uppercase text-text-muted tracking-widest font-mono">Academic Avg.</p>
+               <h3 className="text-2xl font-black">{avgAttendance}%</h3>
+            </div>
+         </div>
+
+         <div className="premium-card p-6 bg-surface flex items-center gap-5 border-l-4 border-l-emerald-500">
+            <div className="p-3 bg-emerald-500/10 rounded-2xl text-emerald-500">
+               <Calendar size={24}/>
+            </div>
+            <div>
+               <p className="text-[10px] font-black uppercase text-text-muted tracking-widest font-mono">Total Workouts</p>
+               <h3 className="text-2xl font-black">{totalWorkouts}</h3>
+            </div>
+         </div>
+
+         <div className="premium-card p-6 bg-surface flex items-center gap-5 border-l-4 border-l-orange-500">
+            <div className="p-3 bg-orange-500/10 rounded-2xl text-orange-500">
+               <TrendingUp size={24}/>
+            </div>
+            <div>
+               <p className="text-[10px] font-black uppercase text-text-muted tracking-widest font-mono">Top Goal</p>
+               <h3 className="text-2xl font-black">Consistency</h3>
+            </div>
+         </div>
       </div>
 
       {/* Tabs */}
-      <div className="flex gap-4 border-b border-[var(--app-border)]">
+      <div className="flex gap-2 p-1 bg-surface rounded-2xl border border-border w-fit">
         <button 
           onClick={() => setActiveTab('academic')}
-          className={`pb-3 px-2 text-sm font-bold transition-all border-b-2 ${activeTab === 'academic' ? 'border-[var(--app-accent)] text-[var(--app-text)]' : 'border-transparent text-[var(--app-text-muted)]'}`}
+          className={`px-6 py-2.5 rounded-xl text-xs font-black uppercase tracking-widest transition-all ${activeTab === 'academic' ? 'bg-bg text-accent shadow-lg border border-border' : 'text-text-muted hover:text-text'}`}
         >
-          Academic
+          Education
         </button>
         <button 
           onClick={() => setActiveTab('gym')}
-          className={`pb-3 px-2 text-sm font-bold transition-all border-b-2 ${activeTab === 'gym' ? 'border-[var(--app-accent)] text-[var(--app-text)]' : 'border-transparent text-[var(--app-text-muted)]'}`}
+          className={`px-6 py-2.5 rounded-xl text-xs font-black uppercase tracking-widest transition-all ${activeTab === 'gym' ? 'bg-bg text-accent shadow-lg border border-border' : 'text-text-muted hover:text-text'}`}
         >
-          Gym
+          Athletics
         </button>
       </div>
 
-      {/* ACADEMIC TAB */}
-      {activeTab === 'academic' && (
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* Chart Section */}
-          <div className="lg:col-span-2 premium-card p-6 min-h-[400px]">
-            <h3 className="text-lg font-bold mb-6">Attendance Overview (%)</h3>
-            <ResponsiveContainer width="100%" height={300}>
-              <BarChart data={attendanceChartData}>
-                <CartesianGrid strokeDasharray="3 3" opacity={0.1} vertical={false} />
-                <XAxis dataKey="subject" stroke="var(--app-text-muted)" fontSize={10} tickLine={false} />
-                <YAxis stroke="var(--app-text-muted)" fontSize={10} tickLine={false} domain={[0, 100]} />
-                <Tooltip cursor={{fill: 'var(--app-surface-hover)'}} contentStyle={{backgroundColor: 'var(--app-surface)', borderRadius: '8px', border:'none'}} />
-                <Bar dataKey="percentage" fill="var(--app-accent)" radius={[4, 4, 0, 0]} />
-              </BarChart>
-            </ResponsiveContainer>
-          </div>
+      {/* CONTENT AREA */}
+      <div className="min-h-[500px]">
+        {activeTab === 'academic' && (
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 md:gap-8">
+            {/* Chart Section */}
+            <div className="lg:col-span-8 premium-card p-6 md:p-8 bg-surface shadow-2xl relative overflow-hidden">
+               <div className="absolute top-0 right-0 w-32 h-32 bg-accent/5 blur-[60px] rounded-full"></div>
+              <h3 className="text-[10px] font-black uppercase text-text-muted tracking-widest font-mono mb-8">Attendance Distribution</h3>
+              <div className="h-[300px] md:h-[400px] w-full">
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={attendanceChartData}>
+                    <CartesianGrid strokeDasharray="3 3" opacity={0.05} vertical={false} />
+                    <XAxis dataKey="subject" stroke="var(--app-text-muted)" fontSize={10} tickLine={false} axisLine={false} tick={{fontWeight: 'bold'}} />
+                    <YAxis stroke="var(--app-text-muted)" fontSize={10} tickLine={false} domain={[0, 100]} axisLine={false} tick={{fontWeight: 'bold'}} />
+                    <Tooltip cursor={{fill: 'var(--app-bg)', opacity: 0.2}} contentStyle={{backgroundColor: 'var(--app-surface)', borderRadius: '12px', border:'1px solid var(--app-border)', fontWeight: 'bold', fontSize: '12px'}} />
+                    <Bar dataKey="percentage" fill="var(--app-accent)" radius={[6, 6, 0, 0]} barSize={40} />
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+            </div>
 
-          {/* Details List */}
-          <div className="premium-card p-6 overflow-y-auto max-h-[400px]">
-            <h3 className="text-lg font-bold mb-4">Subject Breakdown</h3>
-            <div className="space-y-3">
-              {attendanceChartData.map((item, i) => (
-                <div key={i} className="flex justify-between items-center p-3 bg-[var(--app-bg)] rounded-xl border border-[var(--app-border)]">
-                  <div>
-                    <div className="font-bold text-sm">{item.subject}</div>
-                    <div className="text-[10px] text-[var(--app-text-muted)]">
-                      {item.present} Present / {item.total} Total
+            {/* Details List */}
+            <div className="lg:col-span-4 premium-card p-6 md:p-8 bg-surface h-fit lg:sticky lg:top-8">
+              <h3 className="text-[10px] font-black uppercase text-text-muted tracking-widest font-mono mb-6">Subject Inventory</h3>
+              <div className="space-y-3">
+                {attendanceChartData.map((item, i) => (
+                  <div key={i} className="flex justify-between items-center p-4 bg-bg rounded-2xl border border-border group hover:border-accent/30 transition-all">
+                    <div className="space-y-1">
+                      <div className="font-black text-sm tracking-tight">{item.subject}</div>
+                      <div className="text-[9px] font-bold text-text-muted uppercase tracking-tighter font-mono">
+                        {item.present} / {item.total} SESSIONS
+                      </div>
+                    </div>
+                    <div className={`text-lg font-black font-mono ${item.percentage < 75 ? 'text-rose-500' : 'text-emerald-500'}`}>
+                      {item.percentage}%
                     </div>
                   </div>
-                  <div className={`text-sm font-black ${item.percentage < 75 ? 'text-rose-500' : 'text-emerald-500'}`}>
-                    {item.percentage}%
-                  </div>
-                </div>
-              ))}
+                ))}
+                {attendanceChartData.length === 0 && (
+                   <div className="text-center py-10 opacity-30 text-[10px] font-black uppercase font-mono">No academic data found</div>
+                )}
+              </div>
             </div>
           </div>
-        </div>
-      )}
+        )}
 
-      {/* GYM TAB */}
-      {activeTab === 'gym' && (
-        <div className="space-y-6">
-          <div className="flex gap-4">
-            <select 
-              className="p-3 rounded-xl bg-[var(--app-bg)] border border-[var(--app-border)] font-bold text-sm outline-none focus:border-[var(--app-accent)]"
-              onChange={(e) => setSelectedExercise(e.target.value)}
-              value={selectedExercise}
-            >
-              <option value="">Select Exercise</option>
-              {uniqueExercises.map(ex => <option key={ex} value={ex}>{ex}</option>)}
-            </select>
-          </div>
-
-          <div className="premium-card p-6 min-h-[400px]">
-            {selectedExercise ? (
-              <>
-                <h3 className="text-lg font-bold mb-6">Progress: {selectedExercise}</h3>
-                <ResponsiveContainer width="100%" height={300}>
-                  <LineChart data={gymChartData}>
-                    <CartesianGrid strokeDasharray="3 3" opacity={0.1} />
-                    <XAxis dataKey="date" stroke="var(--app-text-muted)" fontSize={10} tickLine={false} />
-                    <YAxis stroke="var(--app-text-muted)" fontSize={10} tickLine={false} />
-                    <Tooltip contentStyle={{backgroundColor: 'var(--app-surface)', borderRadius: '8px', border:'none'}} />
-                    <Line type="monotone" dataKey="weight" stroke="var(--app-accent)" strokeWidth={3} dot={{r: 4, fill: 'var(--app-bg)', strokeWidth: 2}} activeDot={{r: 6}} />
-                  </LineChart>
-                </ResponsiveContainer>
-              </>
-            ) : (
-              <div className="h-full flex flex-col items-center justify-center text-[var(--app-text-muted)] opacity-50 py-20">
-                <Dumbbell size={48} className="mb-4" />
-                <p>Select an exercise to view your strength trends</p>
+        {activeTab === 'gym' && (
+          <div className="space-y-6 md:space-y-8">
+            <div className="flex flex-col sm:flex-row gap-4 items-center justify-between premium-card p-4 md:p-6 bg-surface">
+              <div className="flex items-center gap-3">
+                 <Dumbbell size={20} className="text-accent"/>
+                 <h3 className="text-sm font-black uppercase tracking-widest">Growth Analytics</h3>
               </div>
-            )}
+              <select 
+                className="w-full sm:w-64 p-3 rounded-xl bg-bg border border-border font-black text-xs uppercase tracking-widest outline-none focus:border-accent transition-all cursor-pointer shadow-sm"
+                onChange={(e) => setSelectedExercise(e.target.value)}
+                value={selectedExercise}
+              >
+                <option value="">Select Movement</option>
+                {uniqueExercises.map(ex => <option key={ex} value={ex}>{ex}</option>)}
+              </select>
+            </div>
+
+            <div className="premium-card p-6 md:p-10 bg-surface shadow-2xl relative overflow-hidden min-h-[450px]">
+               <div className="absolute -bottom-20 -left-20 w-80 h-80 bg-accent/5 blur-[100px] rounded-full"></div>
+              {selectedExercise ? (
+                <>
+                  <div className="flex justify-between items-center mb-10">
+                     <h3 className="text-lg md:text-2xl font-black tracking-tighter">{selectedExercise} Progression</h3>
+                     <span className="text-[10px] font-black text-accent uppercase tracking-[0.2em] font-mono">Load Over Time (kg)</span>
+                  </div>
+                  <div className="h-[300px] md:h-[450px] w-full">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <LineChart data={gymChartData}>
+                        <CartesianGrid strokeDasharray="3 3" opacity={0.05} />
+                        <XAxis dataKey="date" stroke="var(--app-text-muted)" fontSize={10} tickLine={false} axisLine={false} tick={{fontWeight: 'bold'}} />
+                        <YAxis stroke="var(--app-text-muted)" fontSize={10} tickLine={false} axisLine={false} tick={{fontWeight: 'bold'}} />
+                        <Tooltip contentStyle={{backgroundColor: 'var(--app-surface)', borderRadius: '12px', border:'1px solid var(--app-border)', fontWeight: 'bold', fontSize: '12px'}} />
+                        <Line type="monotone" dataKey="weight" stroke="var(--app-accent)" strokeWidth={4} dot={{r: 6, fill: 'var(--app-bg)', strokeWidth: 3}} activeDot={{r: 8, strokeWidth: 0}} />
+                      </LineChart>
+                    </ResponsiveContainer>
+                  </div>
+                </>
+              ) : (
+                <div className="h-full flex flex-col items-center justify-center text-text-muted gap-6 opacity-40 py-20">
+                  <Activity size={64} strokeWidth={1} className="animate-pulse" />
+                  <p className="font-black text-xs uppercase tracking-[0.2em] text-center max-w-xs leading-relaxed">Select a movement from your arsenal to visualize your strength trajectory</p>
+                </div>
+              )}
+            </div>
           </div>
-        </div>
-      )}
+        )}
+      </div>
     </div>
   );
 }

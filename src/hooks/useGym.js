@@ -1,12 +1,16 @@
 import { useState, useEffect } from "react";
 import { supabase } from "../lib/supabase";
 import { useAuth } from "../context/AuthContext";
+import { useSettings } from "./useSettings";
 
 export function useGym() {
   const { user } = useAuth();
+  const { settings } = useSettings();
   const [templates, setTemplates] = useState([]);
   const [schedule, setSchedule] = useState([]);
   const [isLoaded, setIsLoaded] = useState(false);
+
+  const cycleLength = settings.gymCycleLength || 14;
 
   useEffect(() => {
     if (!user) { setIsLoaded(true); return; }
@@ -14,12 +18,12 @@ export function useGym() {
       const { data } = await supabase.from('gym_data').select('*').eq('user_id', user.id).single();
       if (data) {
         setTemplates(data.templates || []);
-        setSchedule(data.schedule || Array.from({ length: 14 }, (_, i) => ({ dayIndex: i + 1, templateId: null })));
+        setSchedule(data.schedule || Array.from({ length: cycleLength }, (_, i) => ({ dayIndex: i + 1, templateId: null })));
       }
       setIsLoaded(true);
     };
     loadData();
-  }, [user]);
+  }, [user, cycleLength]);
 
   const saveToCloud = async (newT, newS) => {
     if (!user) return;
@@ -38,11 +42,11 @@ export function useGym() {
     if (startEpoch === 0) dayDiff = currentEpoch;
     
     // Ensure positive modulo
-    return ((dayDiff % 14) + 14) % 14; 
+    return ((dayDiff % cycleLength) + cycleLength) % cycleLength; 
   };
 
   const resetCycle = () => {
-    if (window.confirm("Restart the 14-day cycle to Day 1 starting today?")) {
+    if (window.confirm(`Restart the ${cycleLength}-day cycle to Day 1 starting today?`)) {
       const currentEpoch = Math.floor(Date.now() / (1000 * 60 * 60 * 24));
       localStorage.setItem('gym_cycle_start', currentEpoch.toString());
       window.location.reload(); // Reload to reflect changes immediately

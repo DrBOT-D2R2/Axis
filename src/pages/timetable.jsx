@@ -45,7 +45,7 @@ export default function Timetable() {
     fetchEvents();
   }, [user, currentWeekStart]);
 
-  // 2. Handle .ics Upload & Expansion
+  // 2. Handle .ics Upload
   const handleFileUpload = async (e) => {
     const file = e.target.files[0];
     if (!file) return;
@@ -59,7 +59,6 @@ export default function Timetable() {
         const vevents = comp.getAllSubcomponents('vevent');
         const newEvents = [];
 
-        // Generate events for the next 4 months
         const limit = new Date();
         limit.setMonth(limit.getMonth() + 4);
 
@@ -75,8 +74,6 @@ export default function Timetable() {
             let next;
             while ((next = iterator.next()) && next.toJSDate() < limit) {
               const start = next.toJSDate();
-              const end = eventObj.endDate.toJSDate();
-              // Calculate duration to set correct end time for occurrence
               const duration = eventObj.duration.toSeconds() * 1000;
               const endTimestamp = start.getTime() + duration;
 
@@ -91,7 +88,6 @@ export default function Timetable() {
               });
             }
           } else {
-            // Single event
             newEvents.push({
               user_id: user.id,
               title: summary,
@@ -104,19 +100,15 @@ export default function Timetable() {
           }
         });
 
-        // Clear old events (optional, risky if you want to keep history)
-        // await supabase.from('events').delete().eq('user_id', user.id); 
-
-        // Batch Insert
         const { error } = await supabase.from('events').insert(newEvents);
         if (error) throw error;
-        
+
         alert(`Success! Imported ${newEvents.length} classes.`);
         window.location.reload();
 
       } catch (err) {
         console.error(err);
-        alert("Failed to parse file. Make sure it is a valid .ics file.");
+        alert("Failed to parse file. Ensure it's a valid .ics file.");
       } finally {
         setUploading(false);
       }
@@ -124,142 +116,142 @@ export default function Timetable() {
     reader.readAsText(file);
   };
 
-  // 3. Mark Attendance Logic
   const updateStatus = async (id, status) => {
-    // Optimistic Update
     setEvents(prev => prev.map(ev => ev.id === id ? { ...ev, status } : ev));
-    // DB Update
     await supabase.from('events').update({ status }).eq('id', id);
   };
 
-  // 4. Navigation Helpers
   const changeWeek = (offset) => {
     const newDate = new Date(currentWeekStart);
     newDate.setDate(newDate.getDate() + (offset * 7));
     setCurrentWeekStart(newDate);
   };
 
-  // Group events by Day for the Grid
   const days = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
   const eventsByDay = Array(7).fill([]).map(() => []);
 
   events.forEach(ev => {
     const date = new Date(ev.start_time);
-    const dayIndex = date.getDay() === 0 ? 6 : date.getDay() - 1; // Mon=0, Sun=6
+    const dayIndex = date.getDay() === 0 ? 6 : date.getDay() - 1;
     eventsByDay[dayIndex] = [...eventsByDay[dayIndex], ev];
   });
 
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+
   return (
-    <div className="max-w-7xl mx-auto space-y-6 p-4">
-      {/* Header */}
-      <div className="flex flex-col md:flex-row justify-between items-center gap-4">
+    <div className="max-w-[1600px] mx-auto space-y-6 p-4 md:p-8 text-text">
+
+      {/* Header & controls */}
+      <div className="flex flex-col lg:flex-row justify-between lg:items-center gap-6 pb-6 border-b border-border/50">
         <div>
-          <h1 className="text-3xl font-black">Timetable</h1>
-          <p className="text-sm opacity-70">
-            Week of {currentWeekStart.toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
+          <h1 className="text-3xl md:text-4xl font-black tracking-tight">Academic Timetable</h1>
+          <p className="text-sm text-text-muted font-medium mt-1">
+            Week of {currentWeekStart.toLocaleDateString(undefined, { month: 'long', day: 'numeric', year: 'numeric' })}
           </p>
         </div>
 
-        <div className="flex gap-2">
-           {/* Week Nav */}
-          <div className="flex items-center bg-[var(--app-surface)] rounded-lg border border-[var(--app-border)]">
-            <button onClick={() => changeWeek(-1)} className="p-2 hover:bg-[var(--app-surface-hover)]"><ChevronLeft size={20}/></button>
-            <button onClick={() => setCurrentWeekStart(getStartOfWeek(new Date()))} className="px-3 text-xs font-bold">Today</button>
-            <button onClick={() => changeWeek(1)} className="p-2 hover:bg-[var(--app-surface-hover)]"><ChevronRight size={20}/></button>
+        <div className="flex flex-wrap items-center gap-3">
+          <div className="flex items-center bg-surface p-1 rounded-xl border border-border shadow-sm">
+            <button onClick={() => changeWeek(-1)} className="p-2 hover:bg-bg rounded-lg transition-colors text-text-muted hover:text-accent"><ChevronLeft size={18}/></button>
+            <button onClick={() => setCurrentWeekStart(getStartOfWeek(new Date()))} className="px-4 text-[10px] font-black uppercase tracking-widest hover:text-accent transition-colors">Today</button>
+            <button onClick={() => changeWeek(1)} className="p-2 hover:bg-bg rounded-lg transition-colors text-text-muted hover:text-accent"><ChevronRight size={18}/></button>
           </div>
 
-          {/* Upload Button */}
-          <label className={`flex items-center gap-2 px-4 py-2 rounded-lg font-bold text-white cursor-pointer transition-all ${uploading ? 'bg-gray-500' : 'bg-[var(--app-accent)] hover:opacity-90'}`}>
-            <Upload size={16}/> {uploading ? "Importing..." : "Sync .ics"}
+          <label className={`flex items-center gap-2 px-6 py-2.5 rounded-xl text-xs font-black uppercase tracking-widest cursor-pointer transition-all shadow-lg ${uploading ? 'bg-surface text-text-muted opacity-50' : 'bg-accent text-bg hover:opacity-90 shadow-accent/20 active:scale-95'}`}>
+            <Upload size={14}/> {uploading ? "Importing..." : "Sync .ics"}
             <input type="file" accept=".ics" className="hidden" onChange={handleFileUpload} disabled={uploading} />
           </label>
         </div>
       </div>
 
-      {/* Grid View */}
-      <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
+      {/* Responsive Grid */}
+      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-7 gap-6">
         {days.map((dayName, idx) => {
           const dayEvents = eventsByDay[idx];
-          // Don't hide empty days if we want a full week view, or hide them:
-          // if (dayEvents.length === 0) return null; 
+          const currentDayDate = new Date(currentWeekStart);
+          currentDayDate.setDate(currentWeekStart.getDate() + idx);
+          const isToday = currentDayDate.getTime() === today.getTime();
 
           return (
-            <div key={dayName} className="flex flex-col gap-3">
-              <h3 className="font-bold text-sm uppercase opacity-50 tracking-wider text-center mb-2">{dayName}</h3>
-              
-              {dayEvents.length === 0 && (
-                <div className="text-center py-10 opacity-20 text-xs border border-dashed border-[var(--app-border)] rounded-xl">
-                  No Classes
-                </div>
-              )}
+            <div key={dayName} className="flex flex-col gap-4">
+              <div className="flex items-center justify-between px-2">
+                 <h3 className={`text-[10px] font-black uppercase tracking-[0.2em] font-mono ${isToday ? 'text-accent' : 'text-text-muted opacity-40'}`}>{dayName}</h3>
+                 {isToday && <span className="w-1.5 h-1.5 rounded-full bg-accent animate-pulse"></span>}
+              </div>
 
-              {dayEvents.map(ev => {
-                const startTime = new Date(ev.start_time).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
-                const isPast = new Date(ev.end_time) < new Date();
-                
-                return (
-                  <div key={ev.id} className={`p-3 rounded-xl border transition-all ${
-                    ev.status === 'present' ? 'bg-emerald-500/10 border-emerald-500/50' :
-                    ev.status === 'absent' ? 'bg-rose-500/10 border-rose-500/50' :
-                    ev.status === 'cancelled' ? 'bg-gray-500/10 border-gray-500/50 opacity-60' :
-                    'bg-[var(--app-surface)] border-[var(--app-border)]'
-                  }`}>
-                    {/* Time & Location */}
-                    <div className="flex justify-between items-start mb-1">
-                      <span className="text-xs font-mono font-bold opacity-70">{startTime}</span>
-                      <span className="text-[10px] bg-[var(--app-bg)] px-1.5 py-0.5 rounded text-[var(--app-text-muted)] border border-[var(--app-border)]">
-                        {ev.location}
-                      </span>
-                    </div>
-
-                    {/* Title */}
-                    <div className="font-bold text-sm leading-tight mb-3">
-                      {ev.title}
-                    </div>
-
-                    {/* Actions (Only show for pending/past classes) */}
-                    <div className="flex gap-2 justify-end">
-                      {ev.status === 'present' ? (
-                        <div className="flex items-center gap-1 text-xs font-bold text-emerald-500">
-                          <CheckCircle size={14}/> Present
-                        </div>
-                      ) : ev.status === 'absent' ? (
-                         <div className="flex items-center gap-1 text-xs font-bold text-rose-500">
-                          <XCircle size={14}/> Missed
-                        </div>
-                      ) : (
-                        // Pending Actions
-                        <>
-                          <button 
-                            onClick={() => updateStatus(ev.id, 'present')}
-                            className="p-1.5 rounded-md hover:bg-emerald-500 hover:text-white text-emerald-500 transition-colors"
-                            title="Mark Present"
-                          >
-                            <CheckCircle size={18} />
-                          </button>
-                          <button 
-                            onClick={() => updateStatus(ev.id, 'absent')}
-                            className="p-1.5 rounded-md hover:bg-rose-500 hover:text-white text-rose-500 transition-colors"
-                            title="Mark Absent"
-                          >
-                            <XCircle size={18} />
-                          </button>
-                        </>
-                      )}
-                      
-                      {/* Undo Button (Small dot) */}
-                      {ev.status !== 'pending' && (
-                        <button 
-                          onClick={() => updateStatus(ev.id, 'pending')} 
-                          className="text-[10px] opacity-40 hover:opacity-100 underline ml-2"
-                        >
-                          undo
-                        </button>
-                      )}
-                    </div>
+              <div className="flex flex-col gap-3">
+                {dayEvents.length === 0 ? (
+                  <div className="text-center py-12 opacity-20 text-[10px] font-black uppercase tracking-widest border border-dashed border-border rounded-2xl bg-surface/30">
+                    No Classes
                   </div>
-                );
-              })}
+                ) : (
+                  dayEvents.map(ev => {
+                    const startTime = new Date(ev.start_time).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+
+                    return (
+                      <div key={ev.id} className={`group p-4 rounded-2xl border-2 transition-all hover:shadow-xl ${
+                        ev.status === 'present' ? 'bg-emerald-500/5 border-emerald-500/30' :
+                        ev.status === 'absent' ? 'bg-rose-500/5 border-rose-500/30' :
+                        ev.status === 'cancelled' ? 'bg-surface border-border opacity-40' :
+                        'bg-surface border-border/50 hover:border-accent/40'
+                      }`}>
+
+                        <div className="flex justify-between items-start mb-3">
+                          <span className={`text-[10px] font-black font-mono tracking-tighter ${ev.status === 'present' ? 'text-emerald-500' : ev.status === 'absent' ? 'text-rose-500' : 'text-accent opacity-70'}`}>
+                            {startTime}
+                          </span>
+                          <span className="text-[9px] bg-bg px-2 py-0.5 rounded-lg text-text-muted border border-border font-black uppercase tracking-tighter shadow-sm">
+                            {ev.location}
+                          </span>
+                        </div>
+
+                        <div className="font-black text-sm leading-snug mb-4 group-hover:text-accent transition-colors line-clamp-2" title={ev.title}>
+                          {ev.title}
+                        </div>
+
+                        <div className="flex gap-2 justify-end items-center">
+                          {ev.status === 'present' ? (
+                            <div className="flex items-center gap-1.5 text-[10px] font-black text-emerald-500 uppercase tracking-tighter">
+                              <CheckCircle size={14}/> Attended
+                            </div>
+                          ) : ev.status === 'absent' ? (
+                             <div className="flex items-center gap-1.5 text-[10px] font-black text-rose-500 uppercase tracking-tighter">
+                              <XCircle size={14}/> Missed
+                            </div>
+                          ) : (
+                            <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                              <button 
+                                onClick={() => updateStatus(ev.id, 'present')}
+                                className="p-2 rounded-xl hover:bg-emerald-500 hover:text-white text-emerald-500 transition-all border border-emerald-500/20 shadow-sm"
+                                title="Mark Present"
+                              >
+                                <CheckCircle size={16} />
+                              </button>
+                              <button 
+                                onClick={() => updateStatus(ev.id, 'absent')}
+                                className="p-2 rounded-xl hover:bg-rose-500 hover:text-white text-rose-500 transition-all border border-rose-500/20 shadow-sm"
+                                title="Mark Absent"
+                              >
+                                <XCircle size={16} />
+                              </button>
+                            </div>
+                          )}
+
+                          {ev.status !== 'pending' && (
+                            <button 
+                              onClick={() => updateStatus(ev.id, 'pending')} 
+                              className="text-[9px] font-black uppercase tracking-widest text-text-muted hover:text-accent opacity-30 hover:opacity-100 ml-2 font-mono"
+                            >
+                              Reset
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })
+                )}
+              </div>
             </div>
           );
         })}

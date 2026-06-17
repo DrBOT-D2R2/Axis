@@ -1,11 +1,13 @@
 import { useState, useEffect } from "react";
 import { supabase } from "../lib/supabase";
 import { useAuth } from "../context/AuthContext";
+import { useSettings } from "./useSettings";
 
 export function useExpenses() {
   const { user } = useAuth();
+  const { settings } = useSettings();
   const [expenses, setExpenses] = useState([]);
-  const [budgetLimit, setBudgetLimit] = useState(5000); 
+  const budgetLimit = settings.budgetLimit || 5000;
   const [isLoaded, setIsLoaded] = useState(false);
 
   // FETCH ON LOAD
@@ -77,7 +79,6 @@ export function useExpenses() {
   return { 
     expenses, 
     budgetLimit, 
-    setBudgetLimit, 
     addExpense, 
     deleteExpense, 
     isLoaded 

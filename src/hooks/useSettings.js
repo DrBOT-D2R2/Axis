@@ -10,7 +10,12 @@ export const THEMES = {
 
 export function useSettings() {
   const { user } = useAuth();
-  const [settings, setSettings] = useState({ userName: "DrBOT", theme: "default" });
+  const [settings, setSettings] = useState({ 
+    userName: "Druhin", 
+    theme: "graphite",
+    budgetLimit: 5000,
+    gymCycleLength: 14 
+  });
   const [isLoaded, setIsLoaded] = useState(false);
 
   useEffect(() => {
@@ -21,7 +26,9 @@ export function useSettings() {
     const loadSettings = async () => {
       try {
         const { data } = await supabase.from('user_settings').select('settings_json').eq('user_id', user.id).single();
-        if (data) setSettings(data.settings_json);
+        if (data && data.settings_json) {
+          setSettings(prev => ({ ...prev, ...data.settings_json }));
+        }
       } catch (e) {
         console.log("Using default settings");
       } finally {

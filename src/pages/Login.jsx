@@ -1,40 +1,41 @@
 import React from "react";
 import { useAuth } from "../context/AuthContext";
-import { Sparkles, ArrowRight, Lock } from "lucide-react";
+import { Sparkles, ArrowRight, Lock, Activity } from "lucide-react";
 
 export default function Login() {
   const { signInWithGoogle } = useAuth();
 
   return (
-    <div className="min-h-screen w-full flex items-center justify-center bg-[var(--app-bg)] relative overflow-hidden p-6 transition-colors duration-500">
+    <div className="min-h-screen w-full flex flex-col items-center justify-center bg-bg relative overflow-hidden p-4 md:p-6 transition-colors duration-500 text-text">
       
       {/* Ambient Royal Glow */}
-      <div className="absolute top-[-20%] left-[-10%] w-[50vw] h-[50vw] bg-[var(--app-accent)] opacity-10 blur-[150px] rounded-full pointer-events-none" />
-      <div className="absolute bottom-[-20%] right-[-10%] w-[50vw] h-[50vw] bg-[var(--app-accent)] opacity-5 blur-[150px] rounded-full pointer-events-none" />
+      <div className="absolute top-[-20%] left-[-10%] w-[80vw] md:w-[50vw] h-[80vw] md:h-[50vw] bg-accent opacity-[0.15] md:opacity-10 blur-[100px] md:blur-[150px] rounded-full pointer-events-none" />
+      <div className="absolute bottom-[-20%] right-[-10%] w-[80vw] md:w-[50vw] h-[80vw] md:h-[50vw] bg-accent opacity-10 md:opacity-5 blur-[100px] md:blur-[150px] rounded-full pointer-events-none" />
 
       {/* Glassmorphism Card */}
-      <div className="w-full max-w-md bg-[var(--app-surface)] border border-[var(--app-border)] p-8 md:p-12 rounded-[2rem] shadow-2xl relative z-10 flex flex-col items-center text-center backdrop-blur-xl">
+      <div className="w-full max-w-md bg-surface/80 border border-border/50 p-8 md:p-12 rounded-[2rem] md:rounded-[2.5rem] shadow-2xl relative z-10 flex flex-col items-center text-center backdrop-blur-2xl">
         
         {/* Logo Icon */}
-        <div className="w-20 h-20 bg-[var(--app-surface-hover)] rounded-2xl flex items-center justify-center mb-8 shadow-inner border border-[var(--app-border)] group">
-          <Sparkles size={40} className="text-[var(--app-accent)] transition-transform duration-500 group-hover:scale-110 group-hover:rotate-12" />
+        <div className="w-16 h-16 md:w-20 md:h-20 bg-surface-hover rounded-2xl flex items-center justify-center mb-6 md:mb-8 shadow-inner border border-border group relative">
+          <div className="absolute inset-0 bg-accent/20 rounded-2xl blur-lg opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
+          <Sparkles size={32} className="text-accent transition-transform duration-700 group-hover:scale-110 group-hover:rotate-12 relative z-10 md:w-10 md:h-10" />
         </div>
 
         {/* Title */}
-        <h1 className="text-5xl font-black text-[var(--app-text)] mb-3 font-heading tracking-tight">
-          Axis<span className="text-[var(--app-accent)]">.</span>
+        <h1 className="text-4xl md:text-5xl font-black text-text mb-3 font-heading tracking-tighter">
+          Axis<span className="text-accent animate-pulse">.</span>
         </h1>
-        <p className="text-[var(--app-text-muted)] text-sm mb-12 font-medium max-w-xs leading-relaxed">
-          Your personal life operating system. <br/> Sync your reality.
+        <p className="text-text-muted text-xs md:text-sm mb-10 md:mb-12 font-medium max-w-[250px] md:max-w-xs leading-relaxed">
+          Your centralized life operating system. <br className="hidden md:block"/> Synchronize your reality.
         </p>
 
         {/* Google Login Button */}
         <button
           onClick={signInWithGoogle}
-          className="w-full flex items-center justify-center gap-4 py-4 px-6 bg-[var(--app-text)] hover:bg-[var(--app-text)]/90 text-[var(--app-bg)] font-bold text-lg rounded-xl transition-all duration-300 transform active:scale-[0.98] shadow-xl hover:shadow-2xl group relative overflow-hidden"
+          className="w-full flex items-center justify-center gap-3 md:gap-4 py-3.5 md:py-4 px-6 bg-text hover:bg-text/90 text-bg font-bold text-base md:text-lg rounded-xl md:rounded-2xl transition-all duration-300 transform active:scale-[0.98] shadow-xl hover:shadow-2xl group relative overflow-hidden"
         >
           {/* Google Icon SVG */}
-          <svg className="w-6 h-6" viewBox="0 0 24 24">
+          <svg className="w-5 h-5 md:w-6 md:h-6" viewBox="0 0 24 24">
             <path
               fill="currentColor"
               d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
@@ -53,14 +54,22 @@ export default function Login() {
             />
           </svg>
           <span>Continue with Google</span>
-          <ArrowRight size={20} className="opacity-0 group-hover:opacity-100 group-hover:translate-x-1 transition-all duration-300 absolute right-6" />
+          <ArrowRight size={18} className="opacity-0 group-hover:opacity-100 group-hover:translate-x-1 transition-all duration-300 absolute right-6 hidden sm:block" />
         </button>
 
-        {/* Footer */}
-        <div className="mt-10 flex items-center gap-2 text-[10px] text-[var(--app-text-muted)] font-mono uppercase tracking-widest opacity-60">
-          <Lock size={12} />
-          <span>Secure & Encrypted</span>
+        {/* Footer Info */}
+        <div className="mt-8 md:mt-10 flex flex-col items-center gap-3">
+           <div className="flex items-center gap-2 text-[9px] md:text-[10px] text-text-muted font-mono uppercase tracking-widest opacity-60">
+             <Lock size={12} />
+             <span>End-to-End Encrypted Session</span>
+           </div>
         </div>
+      </div>
+
+      {/* OS Build Info */}
+      <div className="absolute bottom-6 flex items-center gap-2 text-[9px] text-text-muted/40 font-mono uppercase tracking-widest z-0">
+         <Activity size={10} />
+         <span>Axis OS Core v2.0.1</span>
       </div>
     </div>
   );

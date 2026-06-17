@@ -1,28 +1,29 @@
 import React, { useState } from "react";
 import { Link, useLocation } from "react-router-dom";
-import { Menu, X, Calendar, Dumbbell, Wallet, Home, Settings } from "lucide-react";
+import { Menu, X, Calendar, Dumbbell, Wallet, Home, Settings, Activity } from "lucide-react";
 
 export default function Sidebar({ children }) {
   const [isOpen, setIsOpen] = useState(false);
   const location = useLocation();
 
   const navItems = [
-    { path: "/", label: "Home", icon: <Home size={20} /> },
-    { path: "/timetable", label: "Timetable", icon: <Calendar size={20} /> },
-    { path: "/gym", label: "Gym Plan", icon: <Dumbbell size={20} /> },
-    { path: "/expenses", label: "Expenses", icon: <Wallet size={20} /> },
-    { path: "/settings", label: "Settings", icon: <Settings size={20} /> },
+    { path: "/", label: "Dashboard", icon: <Home size={18} /> },
+    { path: "/timetable", label: "Timetable", icon: <Calendar size={18} /> },
+    { path: "/gym", label: "Training", icon: <Dumbbell size={18} /> },
+    { path: "/expenses", label: "Ledger", icon: <Wallet size={18} /> },
+    { path: "/insights", label: "Insights", icon: <Activity size={18} /> },
+    { path: "/settings", label: "Settings", icon: <Settings size={18} /> },
   ];
 
   const closeSidebar = () => setIsOpen(false);
 
   return (
-    <div className="min-h-screen bg-[var(--app-bg)] flex transition-colors duration-300">
+    <div className="min-h-screen bg-bg flex transition-colors duration-300">
       
       {/* Mobile Overlay */}
       {isOpen && (
         <div 
-          className="fixed inset-0 bg-black/50 z-20 md:hidden backdrop-blur-sm"
+          className="fixed inset-0 bg-black/60 z-40 md:hidden backdrop-blur-sm transition-opacity"
           onClick={closeSidebar}
         />
       )}
@@ -30,22 +31,25 @@ export default function Sidebar({ children }) {
       {/* SIDEBAR */}
       <aside 
         className={`
-          fixed md:static inset-y-0 left-0 z-30
-          w-64 bg-[var(--app-surface)] border-r border-[var(--app-border)] transform transition-transform duration-200 ease-in-out flex flex-col
+          fixed md:sticky top-0 h-screen z-50
+          w-64 md:w-72 bg-surface/95 backdrop-blur-xl border-r border-border/50 transform transition-transform duration-300 ease-[cubic-bezier(0.4,0,0.2,1)] flex flex-col shadow-2xl md:shadow-none
           ${isOpen ? "translate-x-0" : "-translate-x-full md:translate-x-0"}
         `}
       >
-        <div className="h-16 flex items-center px-6 border-b border-[var(--app-border)]">
+        <div className="h-20 flex items-center px-8 border-b border-border/50">
           {/* LOGO / BRAND */}
-          <span className="text-2xl font-black text-[var(--app-text)] tracking-tighter">
-            Axis<span className="text-[var(--app-accent)]">.</span>
-          </span>
-          <button onClick={closeSidebar} className="md:hidden ml-auto p-1 text-[var(--app-text)]">
-            <X size={20} />
+          <Link to="/" onClick={closeSidebar} className="text-3xl font-black text-text tracking-tighter hover:opacity-80 transition-opacity">
+            Axis<span className="text-accent">.</span>
+          </Link>
+          <button onClick={closeSidebar} className="md:hidden ml-auto p-2 text-text-muted hover:text-text hover:bg-surface-hover rounded-xl transition-colors">
+            <X size={24} />
           </button>
         </div>
 
-        <nav className="p-4 space-y-2 flex-1 overflow-y-auto">
+        <nav className="p-5 flex-1 overflow-y-auto space-y-1.5 custom-scrollbar">
+          <div className="px-3 pb-2 pt-2">
+             <span className="text-[10px] font-black uppercase tracking-widest text-text-muted/50 font-mono">Core Modules</span>
+          </div>
           {navItems.map((item) => {
             const isActive = location.pathname === item.path;
             return (
@@ -54,35 +58,62 @@ export default function Sidebar({ children }) {
                 to={item.path}
                 onClick={closeSidebar}
                 className={`
-                  flex items-center gap-3 px-4 py-3 rounded-lg font-medium text-sm transition-all
+                  flex items-center gap-4 px-4 py-3.5 rounded-xl font-bold text-sm transition-all duration-200 group
                   ${isActive 
-                    ? "bg-[var(--app-bg)] text-[var(--app-accent)] border border-[var(--app-border)] shadow-sm" 
-                    : "text-[var(--app-text-muted)] hover:bg-[var(--app-surface-hover)] hover:text-[var(--app-text)]"
+                    ? "bg-accent/10 text-accent" 
+                    : "text-text-muted hover:bg-surface-hover hover:text-text"
                   }
                 `}
               >
-                {item.icon}
+                <div className={`${isActive ? 'scale-110' : 'group-hover:scale-110 group-hover:rotate-3'} transition-transform duration-300`}>
+                   {item.icon}
+                </div>
                 {item.label}
+                {isActive && (
+                  <div className="ml-auto w-1.5 h-1.5 rounded-full bg-accent shadow-[0_0_8px_var(--app-accent)]"></div>
+                )}
               </Link>
             );
           })}
         </nav>
+
+        {/* Sidebar Footer */}
+        <div className="p-6 border-t border-border/50 mt-auto">
+           <div className="flex items-center gap-3">
+              <div className="w-8 h-8 rounded-full bg-accent/20 flex items-center justify-center border border-accent/30 text-accent font-black text-xs">
+                 OS
+              </div>
+              <div className="flex flex-col">
+                 <span className="text-[10px] font-black uppercase tracking-widest text-text">System Active</span>
+                 <span className="text-[9px] font-mono text-emerald-500 flex items-center gap-1">
+                   <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></div>
+                   All nodes secure
+                 </span>
+              </div>
+           </div>
+        </div>
       </aside>
 
       {/* Main Content Area */}
-      <main className="flex-1 flex flex-col min-h-screen overflow-hidden">
+      <main className="flex-1 flex flex-col min-h-screen overflow-hidden bg-bg relative">
         {/* Mobile Header */}
-        <header className="h-16 md:hidden flex items-center px-4 bg-[var(--app-surface)] border-b border-[var(--app-border)]">
-          <button onClick={() => setIsOpen(true)} className="p-2 -ml-2 text-[var(--app-text)]">
-            <Menu size={24} />
-          </button>
-          <span className="ml-4 font-bold text-[var(--app-text)]">
-            {navItems.find(i => i.path === location.pathname)?.label || "Dashboard"}
-          </span>
+        <header className="h-16 md:hidden flex items-center justify-between px-4 bg-surface/80 backdrop-blur-md border-b border-border/50 sticky top-0 z-30">
+          <div className="flex items-center gap-3">
+            <button onClick={() => setIsOpen(true)} className="p-2 text-text-muted hover:text-text hover:bg-surface-hover rounded-xl transition-colors">
+              <Menu size={24} />
+            </button>
+            <span className="font-black text-text tracking-tight">
+              {navItems.find(i => i.path === location.pathname)?.label || "Axis OS"}
+            </span>
+          </div>
+          {/* Small mobile logo indicator */}
+          <div className="w-8 h-8 rounded-xl bg-accent/10 flex items-center justify-center text-accent">
+            <Activity size={16}/>
+          </div>
         </header>
 
         {/* Page Content */}
-        <div className="flex-1 p-4 md:p-8 overflow-y-auto bg-[var(--app-bg)]">
+        <div className="flex-1 overflow-y-auto custom-scrollbar relative z-10">
           {children}
         </div>
       </main>
