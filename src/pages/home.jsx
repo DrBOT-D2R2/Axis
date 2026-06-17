@@ -11,8 +11,9 @@ export default function Home() {
   const { user } = useAuth();
   const { settings } = useSettings();
   const { todaysClasses, isLoaded: timetableLoaded } = useTimetable();
-  const { getTodayCycleIndex, schedule, templates, isLoaded: gymLoaded, logSession } = useGym(); 
+  const { getTodayCycleIndex, schedule, templates, isLoaded: gymLoaded, logSession, updateExercise } = useGym(); 
   const [localClasses, setLocalClasses] = useState([]);
+
 
   // Keep a local copy of classes to allow optimistic updates
   useEffect(() => {
@@ -178,11 +179,22 @@ export default function Home() {
                         <span className="text-[10px] text-text-muted font-mono font-bold tracking-tighter opacity-50">{String(i + 1).padStart(2, '0')}</span>
                         <div className="w-1.5 h-1.5 rounded-full bg-border group-hover:bg-accent transition-colors"></div>
                       </div>
-                      <span className="font-bold text-text text-sm mb-1 group-hover:text-accent transition-colors line-clamp-1" title={ex.name}>{ex.name}</span>
-                      <div className="flex items-center gap-2 text-[11px] font-mono text-text-muted mt-auto font-bold">
-                        <span className="text-accent">{ex.sets}</span> <span className="opacity-60 uppercase text-[9px]">Sets</span>
-                        <span className="text-border mx-0.5">/</span>
-                        <span className="text-accent">{ex.reps}</span> <span className="opacity-60 uppercase text-[9px]">Reps</span>
+                      <span className="font-bold text-text text-sm mb-2 group-hover:text-accent transition-colors line-clamp-1" title={ex.name}>{ex.name}</span>
+                      
+                      {/* Interactive Inputs */}
+                      <div className="flex flex-wrap items-center gap-2 text-[11px] font-mono text-text-muted mt-auto font-bold">
+                        <div className="flex items-center bg-surface-hover px-2 py-1.5 rounded-lg border border-border/50 focus-within:border-accent/50 transition-colors">
+                          <input type="number" value={ex.weight || ''} onChange={(e) => updateExercise(todayTemplate.id, i, 'weight', e.target.value)} placeholder="0" className="w-8 md:w-10 bg-transparent text-accent text-right outline-none placeholder-accent/30" />
+                          <span className="opacity-60 uppercase text-[9px] ml-1">kg</span>
+                        </div>
+                        <div className="flex items-center bg-surface-hover px-2 py-1.5 rounded-lg border border-border/50 focus-within:border-accent/50 transition-colors">
+                          <input type="number" value={ex.sets || ''} onChange={(e) => updateExercise(todayTemplate.id, i, 'sets', e.target.value)} className="w-6 md:w-8 bg-transparent text-accent text-right outline-none" />
+                          <span className="opacity-60 uppercase text-[9px] ml-1">sets</span>
+                        </div>
+                        <div className="flex items-center bg-surface-hover px-2 py-1.5 rounded-lg border border-border/50 focus-within:border-accent/50 transition-colors">
+                          <input type="number" value={ex.reps || ''} onChange={(e) => updateExercise(todayTemplate.id, i, 'reps', e.target.value)} className="w-6 md:w-8 bg-transparent text-accent text-right outline-none" />
+                          <span className="opacity-60 uppercase text-[9px] ml-1">reps</span>
+                        </div>
                       </div>
                     </div>
                   ))}

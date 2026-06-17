@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { useAuth } from "../context/AuthContext";
 import { supabase } from "../lib/supabase";
-import { Upload, Calendar as CalendarIcon, ChevronLeft, ChevronRight, CheckCircle, XCircle } from "lucide-react";
+import { Upload, Calendar as CalendarIcon, ChevronLeft, ChevronRight, CheckCircle, XCircle, Trash2 } from "lucide-react";
 import ICAL from 'ical.js';
 
 export default function Timetable() {
@@ -44,6 +44,22 @@ export default function Timetable() {
 
     fetchEvents();
   }, [user, currentWeekStart]);
+
+  // 1.5 Clear Timetable
+  const clearTimetable = async () => {
+    if (window.confirm("Are you sure you want to clear your entire timetable? This cannot be undone.")) {
+      setUploading(true);
+      const { error } = await supabase.from('events').delete().eq('user_id', user.id);
+      if (!error) {
+        setEvents([]);
+        alert("Timetable cleared successfully.");
+      } else {
+        console.error(error);
+        alert("Failed to clear timetable.");
+      }
+      setUploading(false);
+    }
+  };
 
   // 2. Handle .ics Upload
   const handleFileUpload = async (e) => {
@@ -158,11 +174,22 @@ export default function Timetable() {
             <button onClick={() => changeWeek(1)} className="p-2 hover:bg-bg rounded-lg transition-colors text-text-muted hover:text-accent"><ChevronRight size={18}/></button>
           </div>
 
-          <label className={`flex items-center gap-2 px-6 py-2.5 rounded-xl text-xs font-black uppercase tracking-widest cursor-pointer transition-all shadow-lg ${uploading ? 'bg-surface text-text-muted opacity-50' : 'bg-accent text-bg hover:opacity-90 shadow-accent/20 active:scale-95'}`}>
-            <Upload size={14}/> {uploading ? "Importing..." : "Sync .ics"}
-            <input type="file" accept=".ics" className="hidden" onChange={handleFileUpload} disabled={uploading} />
-          </label>
+          <div className="flex items-center gap-2">
+            <label className={`flex items-center gap-2 px-6 py-2.5 rounded-xl text-xs font-black uppercase tracking-widest cursor-pointer transition-all shadow-lg ${uploading ? 'bg-surface text-text-muted opacity-50' : 'bg-accent text-bg hover:opacity-90 shadow-accent/20 active:scale-95'}`}>
+              <Upload size={14}/> {uploading ? "Importing..." : "Sync .ics"}
+              <input type="file" accept=".ics" className="hidden" onChange={handleFileUpload} disabled={uploading} />
+            </label>
+
+            <button 
+              onClick={clearTimetable} 
+              disabled={uploading}
+              className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-black uppercase tracking-widest cursor-pointer transition-all ${uploading ? 'bg-surface text-text-muted opacity-50' : 'bg-rose-500/10 text-rose-500 hover:bg-rose-500 hover:text-white shadow-sm'}`}
+            >
+              <Trash2 size={14}/> Clear
+            </button>
+          </div>
         </div>
+
       </div>
 
       {/* Responsive Grid */}

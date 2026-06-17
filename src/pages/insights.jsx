@@ -15,22 +15,40 @@ export default function Insights() {
   useEffect(() => {
     if (user) {
       // 1. Fetch Attendance from Relational Events Table
-      supabase.from('events').select('title, status').eq('user_id', user.id)
+      supabase.from('events').select('title, type, status').eq('user_id', user.id)
         .then(({ data }) => {
           if (data) {
+            
+            const normalizeSubject = (title) => {
+              return title
+                .replace(/\s+-\s+(Lecture|Tutorial|Practical|Lab).*$/i, '')
+                .replace(/\s+([LTP]\d*)$/i, '')
+                .trim();
+            };
+
             const grouped = data.reduce((acc, curr) => {
-              if (!acc[curr.title]) acc[curr.title] = { present: 0, total: 0 };
-              acc[curr.title].total += 1;
-              if (curr.status === 'present') acc[curr.title].present += 1;
+              // Skip exams and non-class events
+              if (curr.type === 'Exam' || curr.title.toLowerCase().includes('exam') || curr.title.toLowerCase().includes('compre')) return acc;
+              
+              const subject = normalizeSubject(curr.title);
+              if (!acc[subject]) acc[subject] = { present: 0, total: 0 };
+              
+              // Count only if status is not 'cancelled'
+              if (curr.status !== 'cancelled') {
+                 acc[subject].total += 1;
+                 if (curr.status === 'present') acc[subject].present += 1;
+              }
               return acc;
             }, {});
 
-            const chartData = Object.entries(grouped).map(([subject, stats]) => ({
-              subject,
-              present: stats.present,
-              total: stats.total,
-              percentage: Math.round((stats.present / stats.total) * 100)
-            }));
+            const chartData = Object.entries(grouped)
+              .filter(([_, stats]) => stats.total > 0) // Ensure no divide by zero from 0 totals
+              .map(([subject, stats]) => ({
+                subject,
+                present: stats.present,
+                total: stats.total,
+                percentage: Math.round((stats.present / stats.total) * 100)
+              }));
             setAttendanceData(chartData);
           }
         });

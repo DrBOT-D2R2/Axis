@@ -72,7 +72,7 @@ export function useGym() {
       if (t.id === templateId) {
         return { 
           ...t, 
-          exercises: [...(t.exercises || []), { name: "New Exercise", sets: 3, reps: 10 }] 
+          exercises: [...(t.exercises || []), { name: "New Exercise", sets: 3, reps: 10, weight: 0 }] 
         };
       }
       return t;

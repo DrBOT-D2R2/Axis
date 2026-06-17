@@ -180,13 +180,18 @@ export default function Gym() {
 
                       <div className="flex items-center gap-2 w-full sm:w-auto">
                         <div className="flex-1 sm:w-20 bg-surface rounded-xl p-2 border border-border flex flex-col items-center group-hover:border-accent/20 transition-colors">
+                           <span className="text-[8px] text-text-muted font-black uppercase tracking-tighter">Load (kg)</span>
+                           <input type="number" className="w-full bg-transparent text-center text-sm font-black outline-none text-accent placeholder-accent/30" placeholder="0" value={ex.weight || ''} onChange={(e) => updateExercise(selectedTemplateId, i, 'weight', e.target.value)}/>
+                        </div>
+
+                        <div className="flex-1 sm:w-20 bg-surface rounded-xl p-2 border border-border flex flex-col items-center group-hover:border-accent/20 transition-colors">
                            <span className="text-[8px] text-text-muted font-black uppercase tracking-tighter">Sets</span>
-                           <input className="w-full bg-transparent text-center text-sm font-black outline-none text-accent" value={ex.sets} onChange={(e) => updateExercise(selectedTemplateId, i, 'sets', e.target.value)}/>
+                           <input type="number" className="w-full bg-transparent text-center text-sm font-black outline-none text-accent" value={ex.sets} onChange={(e) => updateExercise(selectedTemplateId, i, 'sets', e.target.value)}/>
                         </div>
 
                         <div className="flex-1 sm:w-20 bg-surface rounded-xl p-2 border border-border flex flex-col items-center group-hover:border-accent/20 transition-colors">
                            <span className="text-[8px] text-text-muted font-black uppercase tracking-tighter">Reps</span>
-                           <input className="w-full bg-transparent text-center text-sm font-black outline-none text-accent" value={ex.reps} onChange={(e) => updateExercise(selectedTemplateId, i, 'reps', e.target.value)}/>
+                           <input type="number" className="w-full bg-transparent text-center text-sm font-black outline-none text-accent" value={ex.reps} onChange={(e) => updateExercise(selectedTemplateId, i, 'reps', e.target.value)}/>
                         </div>
 
                         <button 
