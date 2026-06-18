@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import React, { createContext, useState, useEffect, useContext } from "react";
 import { supabase } from "../lib/supabase";
 import { useAuth } from "../context/AuthContext";
 
@@ -8,10 +8,12 @@ export const THEMES = {
   obsidian: "Obsidian (Purple Night)" 
 };
 
-export function useSettings() {
+const SettingsContext = createContext();
+
+export function SettingsProvider({ children }) {
   const { user } = useAuth();
   const [settings, setSettings] = useState({ 
-    userName: "Druhin", 
+    userName: "Operator", 
     theme: "graphite",
     budgetLimit: 5000,
     gymCycleLength: 14 
@@ -50,5 +52,13 @@ export function useSettings() {
     }
   };
 
-  return { settings, updateSettings, isLoaded };
+  return (
+    <SettingsContext.Provider value={{ settings, updateSettings, isLoaded }}>
+      {children}
+    </SettingsContext.Provider>
+  );
+}
+
+export function useSettings() {
+  return useContext(SettingsContext);
 }

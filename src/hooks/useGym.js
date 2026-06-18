@@ -18,12 +18,40 @@ export function useGym() {
       const { data } = await supabase.from('gym_data').select('*').eq('user_id', user.id).single();
       if (data) {
         setTemplates(data.templates || []);
-        setSchedule(data.schedule || Array.from({ length: cycleLength }, (_, i) => ({ dayIndex: i + 1, templateId: null })));
+        let dbSchedule = data.schedule || [];
+        // Ensure schedule length matches cycleLength immediately on load
+        if (dbSchedule.length === 0) {
+          dbSchedule = Array.from({ length: cycleLength }, (_, i) => ({ dayIndex: i + 1, templateId: null }));
+        } else if (dbSchedule.length > cycleLength) {
+          dbSchedule = dbSchedule.slice(0, cycleLength);
+        } else if (dbSchedule.length < cycleLength) {
+          const extra = Array.from({ length: cycleLength - dbSchedule.length }, (_, i) => ({ dayIndex: dbSchedule.length + i + 1, templateId: null }));
+          dbSchedule = [...dbSchedule, ...extra];
+        }
+        setSchedule(dbSchedule);
+      } else {
+        setSchedule(Array.from({ length: cycleLength }, (_, i) => ({ dayIndex: i + 1, templateId: null })));
       }
       setIsLoaded(true);
     };
     loadData();
-  }, [user, cycleLength]);
+  }, [user]); // Removed cycleLength from dep array to prevent re-fetching on setting change
+
+  // Watch for cycleLength changes dynamically (e.g. user changes setting in UI)
+  useEffect(() => {
+    if (isLoaded && schedule.length > 0 && schedule.length !== cycleLength) {
+      let newS = [...schedule];
+      if (newS.length > cycleLength) {
+        newS = newS.slice(0, cycleLength);
+      } else if (newS.length < cycleLength) {
+        const extra = Array.from({ length: cycleLength - newS.length }, (_, i) => ({ dayIndex: newS.length + i + 1, templateId: null }));
+        newS = [...newS, ...extra];
+      }
+      setSchedule(newS);
+      saveToCloud(templates, newS);
+    }
+  }, [cycleLength, isLoaded]); // Resizes schedule automatically when setting changes
+
 
   const saveToCloud = async (newT, newS) => {
     if (!user) return;
