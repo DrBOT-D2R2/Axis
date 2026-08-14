@@ -8,6 +8,7 @@ export const STORAGE_KEYS = {
   GYM_REGIME: "bits_planner_gym_regime_v1",
   EXPENSE_TRANSACTIONS: "bits_planner_transactions_v1",
   THEME_PREF: "bits_planner_theme_v1", // Future proofing
+  TASKS: "bits_planner_tasks_v1",
 };
 
 /**
